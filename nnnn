@@ -85,19 +85,20 @@ function NeronLib:CreateWindow(title, dragStiffness, dragDamping)
 
 	-- Dragging
 	local dragging = false
-	local dragStart = Vector2.new()
-	local startPos = Main.Position
-
-	-- current velocity for spring simulation
-	local velX, velY = 0, 0
-	-- target in raw offset pixels
+	-- offset from top-left of window to where user clicked
+	local grabOffsetX, grabOffsetY = 0, 0
+	-- target position the spring chases (mouse minus grab offset)
 	local targetX, targetY = 0, 0
+	-- spring velocity
+	local velX, velY = 0, 0
 
 	Main.InputBegan:Connect(function(input)
 		if input.UserInputType == Enum.UserInputType.MouseButton1 then
 			dragging = true
-			dragStart = input.Position
-			startPos = Main.Position
+			-- record where on the window the user clicked
+			grabOffsetX = input.Position.X - Main.AbsolutePosition.X
+			grabOffsetY = input.Position.Y - Main.AbsolutePosition.Y
+			-- initialise target to current position so spring starts at rest
 			targetX = Main.Position.X.Offset
 			targetY = Main.Position.Y.Offset
 			velX, velY = 0, 0
@@ -105,9 +106,9 @@ function NeronLib:CreateWindow(title, dragStiffness, dragDamping)
 	end)
 	UserInputService.InputChanged:Connect(function(input)
 		if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
-			local delta = input.Position - dragStart
-			targetX = startPos.X.Offset + delta.X
-			targetY = startPos.Y.Offset + delta.Y
+			-- target = mouse position minus the grab offset
+			targetX = input.Position.X - grabOffsetX
+			targetY = input.Position.Y - grabOffsetY
 		end
 	end)
 	UserInputService.InputEnded:Connect(function(input)
@@ -117,13 +118,12 @@ function NeronLib:CreateWindow(title, dragStiffness, dragDamping)
 	end)
 
 	-- Spring-based smooth follow
-	local STIFFNESS = dragStiffness or 120  -- how strongly it pulls toward target
-	local DAMPING   = dragDamping   or 14   -- how quickly oscillation dies (raise to reduce bounce)
+	local STIFFNESS = dragStiffness or 120
+	local DAMPING   = dragDamping   or 14
 	game:GetService("RunService").RenderStepped:Connect(function(dt)
 		if not dragging then return end
 		local curX = Main.Position.X.Offset
 		local curY = Main.Position.Y.Offset
-		-- spring force
 		local forceX = (targetX - curX) * STIFFNESS - velX * DAMPING
 		local forceY = (targetY - curY) * STIFFNESS - velY * DAMPING
 		velX = velX + forceX * dt
