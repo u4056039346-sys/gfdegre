@@ -534,34 +534,54 @@ function NeronLib:CreateWindow(title)
 			SideBtn.MouseButton1Click:Connect(function()
 				if Window._activeSideBtn == SideBtn then return end
 
-				hideAllTabContent()
-				deselectCurrentSideBtn()
+				-- Fade out all currently visible content items
+				local fadingFrames = {}
+				for _, t in ipairs(Window._tabs) do
+					for _, stName in ipairs(SUB_TABS) do
+						local st = t._subTabs[stName]
+						if st and st.frame.Visible then
+							table.insert(fadingFrames, st.frame)
+							for _, child in ipairs(st.frame:GetChildren()) do
+								if child:IsA("Frame") or child:IsA("TextButton") then
+									Tween(child, {BackgroundTransparency = 1}, 0.12)
+								end
+							end
+						end
+					end
+				end
 
+				-- Sidebar button animates immediately
+				deselectCurrentSideBtn()
 				Window._activeSideBtn = SideBtn
 				Window._activeSideBtnNameLbl = NameLbl
 				Window._activeSideBtnIconLbl = IconLbl
 				Window._activeSideBtnAccBar = AccBar
-
 				Tween(SideBtn, {BackgroundTransparency = 0.75}, 0.15)
 				Tween(NameLbl, {TextColor3 = C.TEXT1}, 0.15)
 				Tween(IconLbl, {TextColor3 = C.ACCENT_DIM}, 0.15)
 				AccBar.Visible = true
 
-				-- Animate top bar title fade
+				-- Fade out title
 				Tween(TopTitle, {TextTransparency = 1}, 0.08)
 				Tween(TopDesc, {TextTransparency = 1}, 0.08)
-				task.delay(0.09, function()
+
+				-- After fade-out completes, swap content in
+				task.delay(0.14, function()
+					for _, f in ipairs(fadingFrames) do
+						f.Visible = false
+					end
+					hideAllTabContent()
+
 					TopTitle.Text = name
 					TopDesc.Text = Tab._desc
 					Tween(TopTitle, {TextTransparency = 0}, 0.15)
 					Tween(TopDesc, {TextTransparency = 0}, 0.15)
+
+					buildSubTabBtns()
+					Tab._activeST = nil
+					Tab._activeSTBtn = nil
+					Tab:_selectSubTab("General")
 				end)
-
-				buildSubTabBtns()
-
-				Tab._activeST = nil
-				Tab._activeSTBtn = nil
-				Tab:_selectSubTab("General")
 			end)
 
 			local function getFrame(subTab)
