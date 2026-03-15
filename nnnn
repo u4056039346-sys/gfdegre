@@ -84,25 +84,30 @@ function NeronLib:CreateWindow(title)
 	MakeCorner(Main, 10)
 
 	-- Dragging
-	local dragging, dragStart, startPos
-	local targetPos = Main.Position
-	local lerpSpeed = 0.15 -- lower = smoother/slower, higher = snappier (try 0.1 to 0.5)
+	local dragging = false
+	local dragStart = Vector2.new()
+	local startPos = Main.Position
+
+	-- current velocity for spring simulation
+	local velX, velY = 0, 0
+	-- target in raw offset pixels
+	local targetX, targetY = 0, 0
 
 	Main.InputBegan:Connect(function(input)
 		if input.UserInputType == Enum.UserInputType.MouseButton1 then
 			dragging = true
 			dragStart = input.Position
 			startPos = Main.Position
-			targetPos = Main.Position
+			targetX = Main.Position.X.Offset
+			targetY = Main.Position.Y.Offset
+			velX, velY = 0, 0
 		end
 	end)
 	UserInputService.InputChanged:Connect(function(input)
 		if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
 			local delta = input.Position - dragStart
-			targetPos = UDim2.new(
-				startPos.X.Scale, startPos.X.Offset + delta.X,
-				startPos.Y.Scale, startPos.Y.Offset + delta.Y
-			)
+			targetX = startPos.X.Offset + delta.X
+			targetY = startPos.Y.Offset + delta.Y
 		end
 	end)
 	UserInputService.InputEnded:Connect(function(input)
@@ -111,19 +116,22 @@ function NeronLib:CreateWindow(title)
 		end
 	end)
 
-	-- Smooth lerp loop: alpha drives how fast it catches up each frame
-	-- e.g. 0.15 = very floaty, 0.25 = smooth, 0.4 = snappy
+	-- Spring-based smooth follow
+	local STIFFNESS = 120  -- how strongly it pulls toward target
+	local DAMPING   = 14   -- how quickly oscillation dies (raise to reduce bounce)
 	game:GetService("RunService").RenderStepped:Connect(function(dt)
-		if dragging then
-			local cur = Main.Position
-			local alpha = 1 - (1 - lerpSpeed) ^ (dt * 60)
-			Main.Position = UDim2.new(
-				cur.X.Scale  + (targetPos.X.Scale  - cur.X.Scale)  * alpha,
-				cur.X.Offset + (targetPos.X.Offset - cur.X.Offset) * alpha,
-				cur.Y.Scale  + (targetPos.Y.Scale  - cur.Y.Scale)  * alpha,
-				cur.Y.Offset + (targetPos.Y.Offset - cur.Y.Offset) * alpha
-			)
-		end
+		if not dragging then return end
+		local curX = Main.Position.X.Offset
+		local curY = Main.Position.Y.Offset
+		-- spring force
+		local forceX = (targetX - curX) * STIFFNESS - velX * DAMPING
+		local forceY = (targetY - curY) * STIFFNESS - velY * DAMPING
+		velX = velX + forceX * dt
+		velY = velY + forceY * dt
+		Main.Position = UDim2.new(
+			Main.Position.X.Scale, curX + velX * dt,
+			Main.Position.Y.Scale, curY + velY * dt
+		)
 	end)
 
 	-- Sidebar background
