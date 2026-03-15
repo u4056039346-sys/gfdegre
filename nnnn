@@ -118,7 +118,6 @@ function NeronLib:CreateWindow(title)
 	Sidebar.Parent = Main
 	MakeCorner(Sidebar, 10)
 
-	-- Cover right rounded corners of sidebar so only left side is rounded
 	local SidebarCoverRight = Instance.new("Frame")
 	SidebarCoverRight.BackgroundColor3 = C.NAV
 	SidebarCoverRight.BorderSizePixel = 0
@@ -127,7 +126,6 @@ function NeronLib:CreateWindow(title)
 	SidebarCoverRight.ZIndex = 2
 	SidebarCoverRight.Parent = Sidebar
 
-	-- Divider line between sidebar and content
 	local SideDivider = Instance.new("Frame")
 	SideDivider.BackgroundColor3 = C.DIVIDER
 	SideDivider.BorderSizePixel = 0
@@ -199,7 +197,7 @@ function NeronLib:CreateWindow(title)
 	MakePadding(SideScroll, 8, 8, 0, 0)
 	MakeList(SideScroll, 1)
 
-	-- Top bar (title + subtabs row)
+	-- Top bar
 	local TopBar = Instance.new("Frame")
 	TopBar.Name = "TopBar"
 	TopBar.BackgroundColor3 = C.NAV
@@ -210,7 +208,6 @@ function NeronLib:CreateWindow(title)
 	TopBar.Parent = Main
 	MakeCorner(TopBar, 10)
 
-	-- Cover left + bottom corners of topbar so only top-right is rounded
 	local TopBarCoverLeft = Instance.new("Frame")
 	TopBarCoverLeft.BackgroundColor3 = C.NAV
 	TopBarCoverLeft.BorderSizePixel = 0
@@ -254,7 +251,7 @@ function NeronLib:CreateWindow(title)
 	TopDesc.ZIndex = 3
 	TopDesc.Parent = TopBar
 
-	-- Sub-tab row (General / Additional / Misc)
+	-- Sub-tab row
 	local SubRow = Instance.new("Frame")
 	SubRow.Name = "SubRow"
 	SubRow.BackgroundTransparency = 1
@@ -297,9 +294,6 @@ function NeronLib:CreateWindow(title)
 		end
 	end)
 
-	--------------------------------------------------------------------
-	-- Helper: deselect the currently active sidebar button
-	--------------------------------------------------------------------
 	local function deselectCurrentSideBtn()
 		if Window._activeSideBtn then
 			Tween(Window._activeSideBtn, {BackgroundTransparency = 1}, 0.15)
@@ -315,9 +309,6 @@ function NeronLib:CreateWindow(title)
 		end
 	end
 
-	--------------------------------------------------------------------
-	-- Helper: hide all tab content frames
-	--------------------------------------------------------------------
 	local function hideAllTabContent()
 		for _, tab in ipairs(Window._tabs) do
 			for _, stName in ipairs(SUB_TABS) do
@@ -332,83 +323,78 @@ function NeronLib:CreateWindow(title)
 
 	--------------------------------------------------------------------
 	-- AddCategory
-	-- Creates a section header label in the sidebar
-	-- Returns a Category object that has :AddTab()
 	--------------------------------------------------------------------
-function Window:AddCategory(categoryName)
-    local Category = {}
+	function Window:AddCategory(categoryName)
+		local Category = {}
 
-    -- Outer container that holds the label + its tabs
-    local CatContainer = Instance.new("Frame")
-    CatContainer.Name = "CatContainer_" .. categoryName
-    CatContainer.BackgroundTransparency = 1
-    CatContainer.BorderSizePixel = 0
-    CatContainer.Size = UDim2.new(1, 0, 0, 0)          -- will grow with AutomaticSize
-    CatContainer.AutomaticSize = Enum.AutomaticSize.Y
-    CatContainer.LayoutOrder = #SideScroll:GetChildren() + 1
-    CatContainer.ZIndex = 3
-    CatContainer.Parent = SideScroll
-    MakeList(CatContainer, 1)                            -- vertical list inside container
+		-- Container frame that groups label + tabs together
+		local CatContainer = Instance.new("Frame")
+		CatContainer.Name = "CatContainer_" .. categoryName
+		CatContainer.BackgroundTransparency = 1
+		CatContainer.BorderSizePixel = 0
+		CatContainer.Size = UDim2.new(1, 0, 0, 0)
+		CatContainer.AutomaticSize = Enum.AutomaticSize.Y
+		CatContainer.LayoutOrder = #SideScroll:GetChildren() + 1
+		CatContainer.ZIndex = 3
+		CatContainer.Parent = SideScroll
+		MakeList(CatContainer, 1)
 
-    -- Category header label
-    local CatLabel = Instance.new("TextLabel")
-    CatLabel.Name = "CatLabel_" .. categoryName
-    CatLabel.BackgroundTransparency = 1
-    CatLabel.Size = UDim2.new(1, 0, 0, 20)
-    CatLabel.LayoutOrder = 0                             -- always first inside container
-    CatLabel.Font = Enum.Font.GothamBold
-    CatLabel.Text = categoryName
-    CatLabel.TextColor3 = C.CAT_LABEL
-    CatLabel.TextSize = 9
-    CatLabel.TextXAlignment = Enum.TextXAlignment.Left
-    CatLabel.ZIndex = 4
-    CatLabel.Parent = CatContainer
-    MakePadding(CatLabel, 6, 0, 14, 0)
+		-- Category header label
+		local CatLabel = Instance.new("TextLabel")
+		CatLabel.Name = "CatLabel_" .. categoryName
+		CatLabel.BackgroundTransparency = 1
+		CatLabel.Size = UDim2.new(1, 0, 0, 20)
+		CatLabel.LayoutOrder = 0
+		CatLabel.Font = Enum.Font.GothamBold
+		CatLabel.Text = categoryName
+		CatLabel.TextColor3 = C.CAT_LABEL
+		CatLabel.TextSize = 9
+		CatLabel.TextXAlignment = Enum.TextXAlignment.Left
+		CatLabel.ZIndex = 4
+		CatLabel.Parent = CatContainer
+		MakePadding(CatLabel, 6, 0, 14, 0)
 
-    -- Track how many tabs this category has added (for LayoutOrder)
-    local tabCount = 0
+		local tabCount = 0
 
-    function Category:AddTab(name, icon, desc)
-        tabCount = tabCount + 1
-        local Tab = {}
-        Tab._name = name
-        Tab._desc = desc or ""
-        Tab._subTabs = {}
-        Tab._activeST = nil
-        Tab._activeSTBtn = nil
+		function Category:AddTab(name, icon, desc)
+			tabCount = tabCount + 1
 
-        -- Build the 3 sub-tab content frames
-        for _, stName in ipairs(SUB_TABS) do
-            local F = Instance.new("Frame")
-            F.Name = "STFrame_" .. name .. "_" .. stName
-            F.BackgroundTransparency = 1
-            F.BorderSizePixel = 0
-            F.Size = UDim2.new(1, 0, 0, 0)
-            F.AutomaticSize = Enum.AutomaticSize.Y
-            F.Visible = false
-            F.ZIndex = 3
-            F.Parent = Content
-            MakeList(F, 4)
-            Tab._subTabs[stName] = {frame = F, btn = nil, underline = nil}
-        end
+			local Tab = {}
+			Tab._name = name
+			Tab._desc = desc or ""
+			Tab._subTabs = {}
+			Tab._activeST = nil
+			Tab._activeSTBtn = nil
 
-        -- Sidebar button — parented to CatContainer, not SideScroll
-        local SideBtn = Instance.new("TextButton")
-        SideBtn.Name = "SideBtn_" .. name
-        SideBtn.BackgroundColor3 = C.ITEM
-        SideBtn.BackgroundTransparency = 1
-        SideBtn.BorderSizePixel = 0
-        SideBtn.Size = UDim2.new(1, 0, 0, 28)
-        SideBtn.Font = Enum.Font.Gotham
-        SideBtn.Text = ""
-        SideBtn.ZIndex = 4
-        SideBtn.LayoutOrder = tabCount          -- comes after label (LayoutOrder 0)
-        SideBtn.Parent = CatContainer           -- ← KEY CHANGE: parent to container
-        MakeCorner(SideBtn, 4)
+			-- Build the 3 sub-tab content frames
+			for _, stName in ipairs(SUB_TABS) do
+				local F = Instance.new("Frame")
+				F.Name = "STFrame_" .. name .. "_" .. stName
+				F.BackgroundTransparency = 1
+				F.BorderSizePixel = 0
+				F.Size = UDim2.new(1, 0, 0, 0)
+				F.AutomaticSize = Enum.AutomaticSize.Y
+				F.Visible = false
+				F.ZIndex = 3
+				F.Parent = Content
+				MakeList(F, 4)
+				Tab._subTabs[stName] = {frame = F, btn = nil, underline = nil}
+			end
 
+			-- Sidebar button parented to CatContainer (not SideScroll)
+			local SideBtn = Instance.new("TextButton")
+			SideBtn.Name = "SideBtn_" .. name
+			SideBtn.BackgroundColor3 = C.ITEM
+			SideBtn.BackgroundTransparency = 1
+			SideBtn.BorderSizePixel = 0
+			SideBtn.Size = UDim2.new(1, 0, 0, 28)
+			SideBtn.Font = Enum.Font.Gotham
+			SideBtn.Text = ""
+			SideBtn.ZIndex = 4
+			SideBtn.LayoutOrder = tabCount
+			SideBtn.Parent = CatContainer
+			MakeCorner(SideBtn, 4)
 
-
-			-- Icon label (left side of button)
 			local IconLbl = Instance.new("TextLabel")
 			IconLbl.Name = "IconLbl"
 			IconLbl.BackgroundTransparency = 1
@@ -421,7 +407,6 @@ function Window:AddCategory(categoryName)
 			IconLbl.ZIndex = 5
 			IconLbl.Parent = SideBtn
 
-			-- Name label
 			local NameLbl = Instance.new("TextLabel")
 			NameLbl.Name = "NameLbl"
 			NameLbl.BackgroundTransparency = 1
@@ -435,7 +420,6 @@ function Window:AddCategory(categoryName)
 			NameLbl.ZIndex = 5
 			NameLbl.Parent = SideBtn
 
-			-- Accent bar shown on left when active
 			local AccBar = Instance.new("Frame")
 			AccBar.Name = "AccBar"
 			AccBar.BackgroundColor3 = C.ACCENT
@@ -447,7 +431,6 @@ function Window:AddCategory(categoryName)
 			AccBar.Parent = SideBtn
 			MakeCorner(AccBar, 2)
 
-			-- Hover effects
 			SideBtn.MouseEnter:Connect(function()
 				if Window._activeSideBtn ~= SideBtn then
 					Tween(SideBtn, {BackgroundTransparency = 0.82}, 0.12)
@@ -463,15 +446,10 @@ function Window:AddCategory(categoryName)
 				end
 			end)
 
-			-- Build sub-tab row buttons for this tab
 			local function buildSubTabBtns()
-				-- Clear existing sub-tab buttons
 				for _, child in ipairs(SubRow:GetChildren()) do
-					if child:IsA("TextButton") then
-						child:Destroy()
-					end
+					if child:IsA("TextButton") then child:Destroy() end
 				end
-				-- Create new sub-tab buttons
 				for _, stName in ipairs(SUB_TABS) do
 					local stData = Tab._subTabs[stName]
 
@@ -507,12 +485,10 @@ function Window:AddCategory(categoryName)
 				end
 			end
 
-			-- Select a sub-tab by name
 			function Tab:_selectSubTab(stName)
 				local stData = Tab._subTabs[stName]
 				if not stData or not stData.btn then return end
 
-				-- Deselect previous sub-tab
 				if Tab._activeSTBtn then
 					Tween(Tab._activeSTBtn, {TextColor3 = C.TEXT2}, 0.1)
 				end
@@ -521,7 +497,6 @@ function Window:AddCategory(categoryName)
 					Tab._subTabs[Tab._activeST].frame.Visible = false
 				end
 
-				-- Activate new sub-tab
 				Tab._activeST = stName
 				Tab._activeSTBtn = stData.btn
 				Tween(stData.btn, {TextColor3 = C.TEXT1}, 0.1)
@@ -529,17 +504,12 @@ function Window:AddCategory(categoryName)
 				stData.frame.Visible = true
 			end
 
-			-- Click handler for sidebar button
 			SideBtn.MouseButton1Click:Connect(function()
 				if Window._activeSideBtn == SideBtn then return end
 
-				-- Hide all other tab content
 				hideAllTabContent()
-
-				-- Deselect previous sidebar button
 				deselectCurrentSideBtn()
 
-				-- Activate this sidebar button
 				Window._activeSideBtn = SideBtn
 				Window._activeSideBtnNameLbl = NameLbl
 				Window._activeSideBtnIconLbl = IconLbl
@@ -550,36 +520,25 @@ function Window:AddCategory(categoryName)
 				Tween(IconLbl, {TextColor3 = C.ACCENT_DIM}, 0.15)
 				AccBar.Visible = true
 
-				-- Update top bar
 				TopTitle.Text = name
 				TopDesc.Text = Tab._desc
 
-				-- Build sub-tab buttons for this tab
 				buildSubTabBtns()
 
-				-- Reset and select General
 				Tab._activeST = nil
 				Tab._activeSTBtn = nil
 				Tab:_selectSubTab("General")
 			end)
 
-			-- Helper to get the frame for a given sub-tab name
 			local function getFrame(subTab)
 				local st = subTab or "General"
 				local stData = Tab._subTabs[st]
-				if stData then
-					return stData.frame
-				end
+				if stData then return stData.frame end
 				return nil
 			end
 
 			------------------------------------------------------------
 			-- Tab:AddToggle
-			-- label       = string
-			-- description = string (optional, pass "" to skip)
-			-- default     = bool
-			-- callback    = function(bool)
-			-- subTab      = "General"|"Additional"|"Misc" (optional)
 			------------------------------------------------------------
 			function Tab:AddToggle(label, description, default, callback, subTab)
 				local frame = getFrame(subTab)
@@ -672,18 +631,12 @@ function Window:AddCategory(categoryName)
 					updateToggle()
 					if callback then callback(isOn) end
 				end
-				function ctrl:Get()
-					return isOn
-				end
+				function ctrl:Get() return isOn end
 				return ctrl
 			end
 
 			------------------------------------------------------------
 			-- Tab:AddButton
-			-- label       = string
-			-- description = string or function (if function, skips description)
-			-- callback    = function()
-			-- subTab      = "General"|"Additional"|"Misc" (optional)
 			------------------------------------------------------------
 			function Tab:AddButton(label, description, callback, subTab)
 				if type(description) == "function" then
@@ -754,13 +707,6 @@ function Window:AddCategory(categoryName)
 
 			------------------------------------------------------------
 			-- Tab:AddSlider
-			-- label       = string
-			-- description = string or number (if number, skips description)
-			-- min         = number
-			-- max         = number
-			-- default     = number
-			-- callback    = function(number)
-			-- subTab      = "General"|"Additional"|"Misc" (optional)
 			------------------------------------------------------------
 			function Tab:AddSlider(label, description, min, max, default, callback, subTab)
 				if type(description) == "number" then
@@ -879,18 +825,12 @@ function Window:AddCategory(categoryName)
 					SliderKnob.Position = UDim2.new(pct, -6, 0.5, -6)
 					if callback then callback(value) end
 				end
-				function ctrl:Get()
-					return value
-				end
+				function ctrl:Get() return value end
 				return ctrl
 			end
 
 			------------------------------------------------------------
 			-- Tab:AddTextbox
-			-- label       = string
-			-- placeholder = string
-			-- callback    = function(text, enterPressed)
-			-- subTab      = "General"|"Additional"|"Misc" (optional)
 			------------------------------------------------------------
 			function Tab:AddTextbox(label, placeholder, callback, subTab)
 				local frame = getFrame(subTab)
@@ -952,11 +892,6 @@ function Window:AddCategory(categoryName)
 
 			------------------------------------------------------------
 			-- Tab:AddDropdown
-			-- label    = string
-			-- options  = table of strings
-			-- default  = string (or function to skip)
-			-- callback = function(selected)
-			-- subTab   = "General"|"Additional"|"Misc" (optional)
 			------------------------------------------------------------
 			function Tab:AddDropdown(label, options, default, callback, subTab)
 				if type(default) == "function" then
@@ -1132,12 +1067,12 @@ function Window:AddCategory(categoryName)
 
 			table.insert(Window._tabs, Tab)
 			return Tab
-		end
+		end -- end Category:AddTab
 
 		return Category
-	end
+	end -- end Window:AddCategory
 
 	return Window
-end
+end -- end NeronLib:CreateWindow
 
 return NeronLib
