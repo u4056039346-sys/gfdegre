@@ -659,7 +659,6 @@ function NeronLib:CreateWindow(title, dragStiffness, dragDamping)
 			--   OR pass a table as the first argument:
 			--   Tab:AddToggle({ Text=, Desc=, Default=, Callback=, SubTab=, Keybind= })
 			------------------------------------------------------------
-			function Tab:AddToggle(label, description, default, callback, subTab)
 			function Tab:AddToggle(label, description, default, callback, subTab, keybindKey)
 				-- Table-style call support
 				if type(label) == "table" then
