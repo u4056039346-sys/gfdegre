@@ -950,33 +950,27 @@ function NeronLib:CreateWindow(title, dragStiffness, dragDamping)
 			-- Legacy positional style still works unchanged.
 			------------------------------------------------------------
 			function Tab:AddSlider(label, description, min, max, default, callback, subTab)
-				if type(description) == "number" then
-					subTab = callback
-					callback = default
-					default = max
-					max = min
-					min = description
-				-- Detect table-style call: Tab:AddSlider('id', { ... }, subTabStr)
-				local rounding = nil
-				if type(description) == "table" then
-					local t = description
-					subTab      = min   -- third arg is subTab in table style
-					label       = t.Text or t.Label or label
-					min         = t.Min or 0
-					max         = t.Max or 100
-					default     = t.Default or min
-					rounding    = t.Rounding  -- nil = integers
-					callback    = t.Callback
-					description = t.Desc or t.Description or nil
-				elseif type(description) == "number" then
-					-- legacy positional: AddSlider(label, min, max, default, callback, subTab)
-					subTab      = callback
-					callback    = default
-					default     = max
-					max         = min
-					min         = description
-					description = nil
-				end
+    local rounding = nil
+    if type(description) == "table" then
+        local t = description
+        subTab      = min
+        label       = t.Text or t.Label or label
+        min         = t.Min or 0
+        max         = t.Max or 100
+        default     = t.Default or min
+        rounding    = t.Rounding
+        callback    = t.Callback
+        description = t.Desc or t.Description or nil
+    elseif type(description) == "number" then
+        subTab      = callback
+        callback    = default
+        default     = max
+        max         = min
+        min         = description
+        description = nil
+    end
+
+    local frame = getFrame(subTab)
 
 				local frame = getFrame(subTab)
 				if not frame then return end
@@ -1591,5 +1585,6 @@ function NeronLib:CreateWindow(title, dragStiffness, dragDamping)
 
 	return Window
 end -- end NeronLib:CreateWindow
+end
 
 return NeronLib
