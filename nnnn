@@ -85,17 +85,21 @@ function NeronLib:CreateWindow(title)
 
 	-- Dragging
 	local dragging, dragStart, startPos
+	local targetPos = Main.Position
+	local lerpSpeed = 0.18 -- lower = smoother/slower, higher = snappier
+
 	Main.InputBegan:Connect(function(input)
 		if input.UserInputType == Enum.UserInputType.MouseButton1 then
 			dragging = true
 			dragStart = input.Position
 			startPos = Main.Position
+			targetPos = Main.Position
 		end
 	end)
 	UserInputService.InputChanged:Connect(function(input)
 		if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
 			local delta = input.Position - dragStart
-			Main.Position = UDim2.new(
+			targetPos = UDim2.new(
 				startPos.X.Scale, startPos.X.Offset + delta.X,
 				startPos.Y.Scale, startPos.Y.Offset + delta.Y
 			)
@@ -104,6 +108,20 @@ function NeronLib:CreateWindow(title)
 	UserInputService.InputEnded:Connect(function(input)
 		if input.UserInputType == Enum.UserInputType.MouseButton1 then
 			dragging = false
+		end
+	end)
+
+	-- Smooth lerp loop
+	game:GetService("RunService").RenderStepped:Connect(function(dt)
+		if dragging then
+			local cur = Main.Position
+			local alpha = math.min(1, lerpSpeed + dt * 8)
+			Main.Position = UDim2.new(
+				cur.X.Scale  + (targetPos.X.Scale  - cur.X.Scale)  * alpha,
+				cur.X.Offset + (targetPos.X.Offset - cur.X.Offset) * alpha,
+				cur.Y.Scale  + (targetPos.Y.Scale  - cur.Y.Scale)  * alpha,
+				cur.Y.Offset + (targetPos.Y.Offset - cur.Y.Offset) * alpha
+			)
 		end
 	end)
 
