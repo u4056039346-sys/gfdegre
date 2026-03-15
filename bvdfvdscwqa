@@ -131,6 +131,7 @@ function NeronLib:CreateWindow(title, dragStiffness, dragDamping)
 			hasMoved = false
 			grabOffsetX = input.Position.X - Main.AbsolutePosition.X
 			grabOffsetY = input.Position.Y - Main.AbsolutePosition.Y
+			-- start target exactly where window already is
 			targetX = Main.AbsolutePosition.X
 			targetY = Main.AbsolutePosition.Y
 			velX, velY = 0, 0
@@ -389,6 +390,7 @@ function NeronLib:CreateWindow(title, dragStiffness, dragDamping)
 	function Window:AddCategory(categoryName)
 		local Category = {}
 
+		-- Container frame that groups label + tabs together
 		local CatContainer = Instance.new("Frame")
 		CatContainer.Name = "CatContainer_" .. categoryName
 		CatContainer.BackgroundTransparency = 1
@@ -400,6 +402,7 @@ function NeronLib:CreateWindow(title, dragStiffness, dragDamping)
 		CatContainer.Parent = SideScroll
 		MakeList(CatContainer, 1)
 
+		-- Category header label
 		local CatLabel = Instance.new("TextLabel")
 		CatLabel.Name = "CatLabel_" .. categoryName
 		CatLabel.BackgroundTransparency = 1
@@ -426,6 +429,7 @@ function NeronLib:CreateWindow(title, dragStiffness, dragDamping)
 			Tab._activeST = nil
 			Tab._activeSTBtn = nil
 
+			-- Build the 3 sub-tab content frames
 			for _, stName in ipairs(SUB_TABS) do
 				local F = Instance.new("Frame")
 				F.Name = "STFrame_" .. name .. "_" .. stName
@@ -437,12 +441,14 @@ function NeronLib:CreateWindow(title, dragStiffness, dragDamping)
 				F.ZIndex = 3
 				F.Parent = Content
 				MakeList(F, 4)
+				-- UIPadding used to animate a slide-in offset
 				local FPad = Instance.new("UIPadding")
 				FPad.PaddingTop = UDim.new(0, 0)
 				FPad.Parent = F
 				Tab._subTabs[stName] = {frame = F, pad = FPad, btn = nil, underline = nil}
 			end
 
+			-- Sidebar button parented to CatContainer (not SideScroll)
 			local SideBtn = Instance.new("TextButton")
 			SideBtn.Name = "SideBtn_" .. name
 			SideBtn.BackgroundColor3 = C.ITEM
@@ -566,10 +572,12 @@ function NeronLib:CreateWindow(title, dragStiffness, dragDamping)
 				Tween(stData.btn, {TextColor3 = C.TEXT1}, 0.1)
 				stData.underline.Visible = true
 
+				-- Slide + fade in the new frame
 				if stData.pad then
 					stData.pad.PaddingTop = UDim.new(0, 10)
 				end
 				stData.frame.Visible = true
+				-- animate children transparency fade-in
 				for _, child in ipairs(stData.frame:GetChildren()) do
 					if child:IsA("Frame") or child:IsA("TextButton") then
 						child.BackgroundTransparency = 1
@@ -585,6 +593,7 @@ function NeronLib:CreateWindow(title, dragStiffness, dragDamping)
 			SideBtn.MouseButton1Click:Connect(function()
 				if Window._activeSideBtn == SideBtn then return end
 
+				-- Fade out all currently visible content items
 				local fadingFrames = {}
 				for _, t in ipairs(Window._tabs) do
 					for _, stName in ipairs(SUB_TABS) do
@@ -600,6 +609,7 @@ function NeronLib:CreateWindow(title, dragStiffness, dragDamping)
 					end
 				end
 
+				-- Sidebar button animates immediately
 				deselectCurrentSideBtn()
 				Window._activeSideBtn = SideBtn
 				Window._activeSideBtnNameLbl = NameLbl
@@ -610,9 +620,11 @@ function NeronLib:CreateWindow(title, dragStiffness, dragDamping)
 				Tween(IconLbl, {TextColor3 = C.ACCENT_DIM}, 0.15)
 				AccBar.Visible = true
 
+				-- Fade out title
 				Tween(TopTitle, {TextTransparency = 1}, 0.08)
 				Tween(TopDesc, {TextTransparency = 1}, 0.08)
 
+				-- After fade-out completes, swap content in
 				task.delay(0.14, function()
 					for _, f in ipairs(fadingFrames) do
 						f.Visible = false
@@ -639,6 +651,7 @@ function NeronLib:CreateWindow(title, dragStiffness, dragDamping)
 			end
 
 			------------------------------------------------------------
+			-- Tab:AddToggle
 			-- Tab:AddToggle  (now supports Keybind option)
 			-- Usage:
 			--   Tab:AddToggle(label, description, default, callback, subTab)
@@ -646,6 +659,7 @@ function NeronLib:CreateWindow(title, dragStiffness, dragDamping)
 			--   OR pass a table as the first argument:
 			--   Tab:AddToggle({ Text=, Desc=, Default=, Callback=, SubTab=, Keybind= })
 			------------------------------------------------------------
+			function Tab:AddToggle(label, description, default, callback, subTab)
 			function Tab:AddToggle(label, description, default, callback, subTab, keybindKey)
 				-- Table-style call support
 				if type(label) == "table" then
@@ -670,6 +684,7 @@ function NeronLib:CreateWindow(title, dragStiffness, dragDamping)
 				local Row = Instance.new("Frame")
 				Row.BackgroundColor3 = C.ITEM
 				Row.BorderSizePixel = 0
+				Row.Size = UDim2.new(1, 0, 0, 49)
 				Row.Size = UDim2.new(1, 0, 0, baseHeight)
 				Row.ZIndex = 3
 				Row.Parent = frame
@@ -677,6 +692,7 @@ function NeronLib:CreateWindow(title, dragStiffness, dragDamping)
 
 				local LabelTxt = Instance.new("TextLabel")
 				LabelTxt.BackgroundTransparency = 1
+				LabelTxt.Size = UDim2.new(1, -60, 0, 22)
 				-- Leave right space for keybind chip + toggle
 				LabelTxt.Size = UDim2.new(1, -110, 0, 22)
 				LabelTxt.Position = UDim2.new(0, 16, 0, 6)
@@ -691,6 +707,7 @@ function NeronLib:CreateWindow(title, dragStiffness, dragDamping)
 				if description and description ~= "" then
 					local DescTxt = Instance.new("TextLabel")
 					DescTxt.BackgroundTransparency = 1
+					DescTxt.Size = UDim2.new(1, -60, 0, 18)
 					DescTxt.Size = UDim2.new(1, -110, 0, 18)
 					DescTxt.Position = UDim2.new(0, 16, 0, 26)
 					DescTxt.Font = Enum.Font.Gotham
@@ -919,6 +936,7 @@ function NeronLib:CreateWindow(title, dragStiffness, dragDamping)
 			end
 
 			------------------------------------------------------------
+			-- Tab:AddSlider
 			-- Tab:AddSlider  — now supports table-style + Rounding
 			-- Table-style:
 			--   Tab:AddSlider('id', {
@@ -933,6 +951,12 @@ function NeronLib:CreateWindow(title, dragStiffness, dragDamping)
 			-- Legacy positional style still works unchanged.
 			------------------------------------------------------------
 			function Tab:AddSlider(label, description, min, max, default, callback, subTab)
+				if type(description) == "number" then
+					subTab = callback
+					callback = default
+					default = max
+					max = min
+					min = description
 				-- Detect table-style call: Tab:AddSlider('id', { ... }, subTabStr)
 				local rounding = nil
 				if type(description) == "table" then
@@ -958,6 +982,7 @@ function NeronLib:CreateWindow(title, dragStiffness, dragDamping)
 				local frame = getFrame(subTab)
 				if not frame then return end
 
+				local value = default or min
 				local value = RoundValue(default or min, min, max, rounding)
 
 				local Row = Instance.new("Frame")
@@ -985,6 +1010,7 @@ function NeronLib:CreateWindow(title, dragStiffness, dragDamping)
 				ValueTxt.Size = UDim2.new(0, 50, 0, 20)
 				ValueTxt.Position = UDim2.new(1, -64, 0, 6)
 				ValueTxt.Font = Enum.Font.GothamBold
+				ValueTxt.Text = tostring(value)
 				ValueTxt.Text = FormatValue(value, rounding)
 				ValueTxt.TextColor3 = C.ACCENT_DIM
 				ValueTxt.TextSize = 12
@@ -1019,6 +1045,7 @@ function NeronLib:CreateWindow(title, dragStiffness, dragDamping)
 				local Fill = Instance.new("Frame")
 				Fill.BackgroundColor3 = C.ACCENT
 				Fill.BorderSizePixel = 0
+				Fill.Size = UDim2.new((value - min) / (max - min), 0, 1, 0)
 				Fill.Size = UDim2.new(initPct, 0, 1, 0)
 				Fill.ZIndex = 5
 				Fill.Parent = TrackBG
@@ -1028,6 +1055,7 @@ function NeronLib:CreateWindow(title, dragStiffness, dragDamping)
 				SliderKnob.BackgroundColor3 = C.TEXT1
 				SliderKnob.BorderSizePixel = 0
 				SliderKnob.Size = UDim2.new(0, 12, 0, 12)
+				SliderKnob.Position = UDim2.new((value - min) / (max - min), -6, 0.5, -6)
 				SliderKnob.Position = UDim2.new(initPct, -6, 0.5, -6)
 				SliderKnob.Text = ""
 				SliderKnob.ZIndex = 6
@@ -1047,6 +1075,9 @@ function NeronLib:CreateWindow(title, dragStiffness, dragDamping)
 					if draggingSlider and input.UserInputType == Enum.UserInputType.MouseMovement then
 						local absPos = TrackBG.AbsolutePosition.X
 						local absSize = TrackBG.AbsoluteSize.X
+						local pct = math.clamp((input.Position.X - absPos) / absSize, 0, 1)
+						value = math.floor(min + (max - min) * pct + 0.5)
+						ValueTxt.Text = tostring(value)
 						local rawPct = math.clamp((input.Position.X - absPos) / absSize, 0, 1)
 						local rawVal = min + (max - min) * rawPct
 						value = RoundValue(rawVal, min, max, rounding)
@@ -1060,6 +1091,9 @@ function NeronLib:CreateWindow(title, dragStiffness, dragDamping)
 
 				local ctrl = {}
 				function ctrl:Set(v)
+					value = math.clamp(v, min, max)
+					local pct = (value - min) / (max - min)
+					ValueTxt.Text = tostring(value)
 					value = RoundValue(v, min, max, rounding)
 					local pct = (max ~= min) and ((value - min) / (max - min)) or 0
 					ValueTxt.Text = FormatValue(value, rounding)
@@ -1133,6 +1167,7 @@ function NeronLib:CreateWindow(title, dragStiffness, dragDamping)
 			end
 
 			------------------------------------------------------------
+			-- Tab:AddDropdown
 			-- Tab:AddDropdown  (single-select, unchanged)
 			------------------------------------------------------------
 			function Tab:AddDropdown(label, options, default, callback, subTab)
