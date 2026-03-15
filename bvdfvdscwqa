@@ -1591,6 +1591,5 @@ function NeronLib:CreateWindow(title, dragStiffness, dragDamping)
 
 	return Window
 end -- end NeronLib:CreateWindow
-end
 
 return NeronLib
