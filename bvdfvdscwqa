@@ -662,8 +662,7 @@ function NeronLib:CreateWindow(title, dragStiffness, dragDamping)
 				if not frame then return end
 
 				local isOn = default or false
-				local boundKey = keybindKey
-				local hasKeybind = keybindKey ~= nil
+				local boundKey = keybindKey or nil   -- Enum.KeyCode or nil
 				local listeningForKey = false
 
 				-- Row height: 49 normally, +26 when keybind slot is shown
@@ -716,7 +715,6 @@ function NeronLib:CreateWindow(title, dragStiffness, dragDamping)
 				KeyChip.TextSize = 9
 				KeyChip.ZIndex = 5
 				KeyChip.Parent = Row
-				KeyChip.Visible = hasKeybind
 				MakeCorner(KeyChip, 3)
 
 				-- small "kb" hint label above chip
@@ -732,7 +730,6 @@ function NeronLib:CreateWindow(title, dragStiffness, dragDamping)
 				KbHint.ZIndex = 5
 				KbHint.Visible = false   -- shown on hover
 				KbHint.Parent = Row
-				KbHint.Visible = hasKeybind and false or false
 
 				-- ── Toggle knob ───────────────────────────────────────────
 				local ToggleBG = Instance.new("Frame")
@@ -803,9 +800,7 @@ function NeronLib:CreateWindow(title, dragStiffness, dragDamping)
 				end
 
 				-- Immediately wire default keybind if provided
-				if hasKeybind and boundKey then
-					applyKey(boundKey)
-				end
+				if boundKey then applyKey(boundKey) end
 
 				-- Click chip to start listening
 				KeyChip.MouseButton1Click:Connect(function()
