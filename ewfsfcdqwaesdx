@@ -212,7 +212,7 @@ function NeronLib:CreateWindow(title, dragStiffness, dragDamping)
 	local LogoText = Instance.new("TextLabel")
 	LogoText.BackgroundTransparency = 1
 	LogoText.Size = UDim2.new(0, 80, 0, 22)
-	LogoText.Position = UDim2.new(0, 42, 0.5, 33)
+	LogoText.Position = UDim2.new(0, 42, 0.5, -11)
 	LogoText.Font = Enum.Font.GothamBold
 	LogoText.Text = "NERON"
 	LogoText.TextColor3 = C.TEXT1
