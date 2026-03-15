@@ -1,0 +1,1185 @@
+local NeronLib = {}
+NeronLib.__index = NeronLib
+
+local TweenService = game:GetService("TweenService")
+local UserInputService = game:GetService("UserInputService")
+
+-- Utility functions
+local function Tween(obj, props, t)
+	local ti = TweenInfo.new(t or 0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+	TweenService:Create(obj, ti, props):Play()
+end
+
+local function MakeCorner(parent, radius)
+	local c = Instance.new("UICorner")
+	c.CornerRadius = UDim.new(0, radius or 6)
+	c.Parent = parent
+	return c
+end
+
+local function MakePadding(parent, top, bottom, left, right)
+	local p = Instance.new("UIPadding")
+	p.PaddingTop = UDim.new(0, top or 0)
+	p.PaddingBottom = UDim.new(0, bottom or 0)
+	p.PaddingLeft = UDim.new(0, left or 0)
+	p.PaddingRight = UDim.new(0, right or 0)
+	p.Parent = parent
+	return p
+end
+
+local function MakeList(parent, padding, fillDirection)
+	local l = Instance.new("UIListLayout")
+	l.Padding = UDim.new(0, padding or 4)
+	l.SortOrder = Enum.SortOrder.LayoutOrder
+	l.FillDirection = fillDirection or Enum.FillDirection.Vertical
+	l.Parent = parent
+	return l
+end
+
+-- Color palette
+local C = {
+	BG          = Color3.fromRGB(14, 14, 18),
+	NAV         = Color3.fromRGB(16, 16, 20),
+	ITEM        = Color3.fromRGB(16, 16, 20),
+	ITEM_HOVER  = Color3.fromRGB(20, 20, 26),
+	ACCENT      = Color3.fromRGB(103, 105, 170),
+	ACCENT_DIM  = Color3.fromRGB(110, 112, 181),
+	TEXT1       = Color3.fromRGB(255, 255, 255),
+	TEXT2       = Color3.fromRGB(130, 130, 145),
+	TEXT3       = Color3.fromRGB(59, 59, 66),
+	CAT_LABEL   = Color3.fromRGB(68, 68, 80),
+	TOG_OFF     = Color3.fromRGB(33, 33, 42),
+	TOG_ON      = Color3.fromRGB(110, 112, 181),
+	TOG_BG      = Color3.fromRGB(20, 20, 24),
+	DIVIDER     = Color3.fromRGB(22, 22, 30),
+	INPUT_BG    = Color3.fromRGB(12, 12, 16),
+	DROPDOWN_BG = Color3.fromRGB(12, 12, 16),
+}
+
+local SUB_TABS = {"General", "Additional", "Misc"}
+
+function NeronLib:CreateWindow(title)
+	local Window = {}
+	Window._tabs = {}
+	Window._activeSideBtn = nil
+	Window._activeSideBtnNameLbl = nil
+	Window._activeSideBtnIconLbl = nil
+	Window._activeSideBtnAccBar = nil
+
+	-- ScreenGui
+	local Gui = Instance.new("ScreenGui")
+	Gui.Name = "NeronLib_" .. title
+	Gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+	Gui.ResetOnSpawn = false
+	Gui.Parent = game:GetService("CoreGui")
+
+	-- Main frame
+	local Main = Instance.new("Frame")
+	Main.Name = "Main"
+	Main.BackgroundColor3 = C.BG
+	Main.BorderSizePixel = 0
+	Main.Size = UDim2.new(0, 690, 0, 463)
+	Main.Position = UDim2.new(0.5, -345, 0.5, -231)
+	Main.Parent = Gui
+	MakeCorner(Main, 10)
+
+	-- Dragging
+	local dragging, dragStart, startPos
+	Main.InputBegan:Connect(function(input)
+		if input.UserInputType == Enum.UserInputType.MouseButton1 then
+			dragging = true
+			dragStart = input.Position
+			startPos = Main.Position
+		end
+	end)
+	UserInputService.InputChanged:Connect(function(input)
+		if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
+			local delta = input.Position - dragStart
+			Main.Position = UDim2.new(
+				startPos.X.Scale, startPos.X.Offset + delta.X,
+				startPos.Y.Scale, startPos.Y.Offset + delta.Y
+			)
+		end
+	end)
+	UserInputService.InputEnded:Connect(function(input)
+		if input.UserInputType == Enum.UserInputType.MouseButton1 then
+			dragging = false
+		end
+	end)
+
+	-- Sidebar background
+	local Sidebar = Instance.new("Frame")
+	Sidebar.Name = "Sidebar"
+	Sidebar.BackgroundColor3 = C.NAV
+	Sidebar.BorderSizePixel = 0
+	Sidebar.Size = UDim2.new(0, 173, 1, 0)
+	Sidebar.Position = UDim2.new(0, 0, 0, 0)
+	Sidebar.ZIndex = 2
+	Sidebar.Parent = Main
+	MakeCorner(Sidebar, 10)
+
+	-- Cover right rounded corners of sidebar so only left side is rounded
+	local SidebarCoverRight = Instance.new("Frame")
+	SidebarCoverRight.BackgroundColor3 = C.NAV
+	SidebarCoverRight.BorderSizePixel = 0
+	SidebarCoverRight.Size = UDim2.new(0, 15, 1, 0)
+	SidebarCoverRight.Position = UDim2.new(1, -15, 0, 0)
+	SidebarCoverRight.ZIndex = 2
+	SidebarCoverRight.Parent = Sidebar
+
+	-- Divider line between sidebar and content
+	local SideDivider = Instance.new("Frame")
+	SideDivider.BackgroundColor3 = C.DIVIDER
+	SideDivider.BorderSizePixel = 0
+	SideDivider.Size = UDim2.new(0, 1, 1, 0)
+	SideDivider.Position = UDim2.new(0, 173, 0, 0)
+	SideDivider.ZIndex = 3
+	SideDivider.Parent = Main
+
+	-- Logo area
+	local LogoFrame = Instance.new("Frame")
+	LogoFrame.BackgroundTransparency = 1
+	LogoFrame.Size = UDim2.new(1, 0, 0, 58)
+	LogoFrame.Position = UDim2.new(0, 0, 0, 0)
+	LogoFrame.ZIndex = 3
+	LogoFrame.Parent = Sidebar
+
+	local LogoIcon = Instance.new("ImageLabel")
+	LogoIcon.BackgroundTransparency = 1
+	LogoIcon.Size = UDim2.new(0, 22, 0, 22)
+	LogoIcon.Position = UDim2.new(0, 14, 0.5, -11)
+	LogoIcon.Image = "rbxassetid://111299374078843"
+	LogoIcon.ZIndex = 3
+	LogoIcon.Parent = LogoFrame
+
+	local LogoText = Instance.new("TextLabel")
+	LogoText.BackgroundTransparency = 1
+	LogoText.Size = UDim2.new(0, 80, 0, 22)
+	LogoText.Position = UDim2.new(0, 42, 0.5, -11)
+	LogoText.Font = Enum.Font.GothamBold
+	LogoText.Text = "NERON"
+	LogoText.TextColor3 = C.TEXT1
+	LogoText.TextSize = 15
+	LogoText.TextXAlignment = Enum.TextXAlignment.Left
+	LogoText.ZIndex = 3
+	LogoText.Parent = LogoFrame
+
+	local LogoSub = Instance.new("TextLabel")
+	LogoSub.BackgroundTransparency = 1
+	LogoSub.Size = UDim2.new(0, 40, 0, 22)
+	LogoSub.Position = UDim2.new(0, 106, 0.5, -11)
+	LogoSub.Font = Enum.Font.GothamBold
+	LogoSub.Text = "CORP."
+	LogoSub.TextColor3 = C.TEXT3
+	LogoSub.TextSize = 9
+	LogoSub.TextXAlignment = Enum.TextXAlignment.Left
+	LogoSub.ZIndex = 3
+	LogoSub.Parent = LogoFrame
+
+	local LogoSep = Instance.new("Frame")
+	LogoSep.BackgroundColor3 = C.DIVIDER
+	LogoSep.BorderSizePixel = 0
+	LogoSep.Size = UDim2.new(1, 0, 0, 1)
+	LogoSep.Position = UDim2.new(0, 0, 0, 55)
+	LogoSep.ZIndex = 3
+	LogoSep.Parent = Sidebar
+
+	-- Sidebar scrolling list
+	local SideScroll = Instance.new("ScrollingFrame")
+	SideScroll.Name = "SideScroll"
+	SideScroll.BackgroundTransparency = 1
+	SideScroll.BorderSizePixel = 0
+	SideScroll.Size = UDim2.new(1, 0, 1, -60)
+	SideScroll.Position = UDim2.new(0, 0, 0, 60)
+	SideScroll.ScrollBarThickness = 0
+	SideScroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
+	SideScroll.CanvasSize = UDim2.new(0, 0, 0, 0)
+	SideScroll.ZIndex = 3
+	SideScroll.Parent = Sidebar
+	MakePadding(SideScroll, 8, 8, 0, 0)
+	MakeList(SideScroll, 1)
+
+	-- Top bar (title + subtabs row)
+	local TopBar = Instance.new("Frame")
+	TopBar.Name = "TopBar"
+	TopBar.BackgroundColor3 = C.NAV
+	TopBar.BorderSizePixel = 0
+	TopBar.Size = UDim2.new(1, -173, 0, 90)
+	TopBar.Position = UDim2.new(0, 173, 0, 0)
+	TopBar.ZIndex = 2
+	TopBar.Parent = Main
+	MakeCorner(TopBar, 10)
+
+	-- Cover left + bottom corners of topbar so only top-right is rounded
+	local TopBarCoverLeft = Instance.new("Frame")
+	TopBarCoverLeft.BackgroundColor3 = C.NAV
+	TopBarCoverLeft.BorderSizePixel = 0
+	TopBarCoverLeft.Size = UDim2.new(0, 15, 1, 0)
+	TopBarCoverLeft.Position = UDim2.new(0, 0, 0, 0)
+	TopBarCoverLeft.ZIndex = 2
+	TopBarCoverLeft.Parent = TopBar
+
+	local TopBarCoverBottom = Instance.new("Frame")
+	TopBarCoverBottom.BackgroundColor3 = C.NAV
+	TopBarCoverBottom.BorderSizePixel = 0
+	TopBarCoverBottom.Size = UDim2.new(1, 0, 0, 15)
+	TopBarCoverBottom.Position = UDim2.new(0, 0, 1, -15)
+	TopBarCoverBottom.ZIndex = 2
+	TopBarCoverBottom.Parent = TopBar
+
+	local TopTitle = Instance.new("TextLabel")
+	TopTitle.Name = "TopTitle"
+	TopTitle.BackgroundTransparency = 1
+	TopTitle.Size = UDim2.new(1, -30, 0, 22)
+	TopTitle.Position = UDim2.new(0, 22, 0, 10)
+	TopTitle.Font = Enum.Font.GothamBold
+	TopTitle.Text = "Select a tab"
+	TopTitle.TextColor3 = C.TEXT1
+	TopTitle.TextSize = 14
+	TopTitle.TextXAlignment = Enum.TextXAlignment.Left
+	TopTitle.ZIndex = 3
+	TopTitle.Parent = TopBar
+
+	local TopDesc = Instance.new("TextLabel")
+	TopDesc.Name = "TopDesc"
+	TopDesc.BackgroundTransparency = 1
+	TopDesc.Size = UDim2.new(1, -30, 0, 18)
+	TopDesc.Position = UDim2.new(0, 22, 0, 30)
+	TopDesc.Font = Enum.Font.Gotham
+	TopDesc.Text = ""
+	TopDesc.TextColor3 = C.TEXT3
+	TopDesc.TextSize = 11
+	TopDesc.TextXAlignment = Enum.TextXAlignment.Left
+	TopDesc.TextWrapped = true
+	TopDesc.ZIndex = 3
+	TopDesc.Parent = TopBar
+
+	-- Sub-tab row (General / Additional / Misc)
+	local SubRow = Instance.new("Frame")
+	SubRow.Name = "SubRow"
+	SubRow.BackgroundTransparency = 1
+	SubRow.Size = UDim2.new(1, -22, 0, 24)
+	SubRow.Position = UDim2.new(0, 22, 0, 58)
+	SubRow.ZIndex = 3
+	SubRow.Parent = TopBar
+	MakeList(SubRow, 18, Enum.FillDirection.Horizontal)
+
+	local TopDivider = Instance.new("Frame")
+	TopDivider.BackgroundColor3 = C.DIVIDER
+	TopDivider.BorderSizePixel = 0
+	TopDivider.Size = UDim2.new(1, 0, 0, 1)
+	TopDivider.Position = UDim2.new(0, 0, 1, -1)
+	TopDivider.ZIndex = 4
+	TopDivider.Parent = TopBar
+
+	-- Main content scroll area
+	local Content = Instance.new("ScrollingFrame")
+	Content.Name = "Content"
+	Content.BackgroundColor3 = C.BG
+	Content.BorderSizePixel = 0
+	Content.Size = UDim2.new(1, -173, 1, -90)
+	Content.Position = UDim2.new(0, 173, 0, 90)
+	Content.ScrollBarThickness = 3
+	Content.ScrollBarImageColor3 = C.ACCENT
+	Content.AutomaticCanvasSize = Enum.AutomaticSize.Y
+	Content.CanvasSize = UDim2.new(0, 0, 0, 0)
+	Content.ZIndex = 2
+	Content.Parent = Main
+	MakePadding(Content, 10, 10, 10, 10)
+	MakeList(Content, 4)
+
+	-- RightCtrl to toggle visibility
+	local guiVisible = true
+	UserInputService.InputBegan:Connect(function(input, gameProcessed)
+		if not gameProcessed and input.KeyCode == Enum.KeyCode.RightControl then
+			guiVisible = not guiVisible
+			Main.Visible = guiVisible
+		end
+	end)
+
+	--------------------------------------------------------------------
+	-- Helper: deselect the currently active sidebar button
+	--------------------------------------------------------------------
+	local function deselectCurrentSideBtn()
+		if Window._activeSideBtn then
+			Tween(Window._activeSideBtn, {BackgroundTransparency = 1}, 0.15)
+			if Window._activeSideBtnNameLbl then
+				Tween(Window._activeSideBtnNameLbl, {TextColor3 = C.TEXT2}, 0.15)
+			end
+			if Window._activeSideBtnIconLbl then
+				Tween(Window._activeSideBtnIconLbl, {TextColor3 = C.TEXT3}, 0.15)
+			end
+			if Window._activeSideBtnAccBar then
+				Window._activeSideBtnAccBar.Visible = false
+			end
+		end
+	end
+
+	--------------------------------------------------------------------
+	-- Helper: hide all tab content frames
+	--------------------------------------------------------------------
+	local function hideAllTabContent()
+		for _, tab in ipairs(Window._tabs) do
+			for _, stName in ipairs(SUB_TABS) do
+				if tab._subTabs[stName] then
+					tab._subTabs[stName].frame.Visible = false
+				end
+			end
+			tab._activeST = nil
+			tab._activeSTBtn = nil
+		end
+	end
+
+	--------------------------------------------------------------------
+	-- AddCategory
+	-- Creates a section header label in the sidebar
+	-- Returns a Category object that has :AddTab()
+	--------------------------------------------------------------------
+function Window:AddCategory(categoryName)
+    local Category = {}
+
+    -- Outer container that holds the label + its tabs
+    local CatContainer = Instance.new("Frame")
+    CatContainer.Name = "CatContainer_" .. categoryName
+    CatContainer.BackgroundTransparency = 1
+    CatContainer.BorderSizePixel = 0
+    CatContainer.Size = UDim2.new(1, 0, 0, 0)          -- will grow with AutomaticSize
+    CatContainer.AutomaticSize = Enum.AutomaticSize.Y
+    CatContainer.LayoutOrder = #SideScroll:GetChildren() + 1
+    CatContainer.ZIndex = 3
+    CatContainer.Parent = SideScroll
+    MakeList(CatContainer, 1)                            -- vertical list inside container
+
+    -- Category header label
+    local CatLabel = Instance.new("TextLabel")
+    CatLabel.Name = "CatLabel_" .. categoryName
+    CatLabel.BackgroundTransparency = 1
+    CatLabel.Size = UDim2.new(1, 0, 0, 20)
+    CatLabel.LayoutOrder = 0                             -- always first inside container
+    CatLabel.Font = Enum.Font.GothamBold
+    CatLabel.Text = categoryName
+    CatLabel.TextColor3 = C.CAT_LABEL
+    CatLabel.TextSize = 9
+    CatLabel.TextXAlignment = Enum.TextXAlignment.Left
+    CatLabel.ZIndex = 4
+    CatLabel.Parent = CatContainer
+    MakePadding(CatLabel, 6, 0, 14, 0)
+
+    -- Track how many tabs this category has added (for LayoutOrder)
+    local tabCount = 0
+
+    function Category:AddTab(name, icon, desc)
+        tabCount = tabCount + 1
+        local Tab = {}
+        Tab._name = name
+        Tab._desc = desc or ""
+        Tab._subTabs = {}
+        Tab._activeST = nil
+        Tab._activeSTBtn = nil
+
+        -- Build the 3 sub-tab content frames
+        for _, stName in ipairs(SUB_TABS) do
+            local F = Instance.new("Frame")
+            F.Name = "STFrame_" .. name .. "_" .. stName
+            F.BackgroundTransparency = 1
+            F.BorderSizePixel = 0
+            F.Size = UDim2.new(1, 0, 0, 0)
+            F.AutomaticSize = Enum.AutomaticSize.Y
+            F.Visible = false
+            F.ZIndex = 3
+            F.Parent = Content
+            MakeList(F, 4)
+            Tab._subTabs[stName] = {frame = F, btn = nil, underline = nil}
+        end
+
+        -- Sidebar button — parented to CatContainer, not SideScroll
+        local SideBtn = Instance.new("TextButton")
+        SideBtn.Name = "SideBtn_" .. name
+        SideBtn.BackgroundColor3 = C.ITEM
+        SideBtn.BackgroundTransparency = 1
+        SideBtn.BorderSizePixel = 0
+        SideBtn.Size = UDim2.new(1, 0, 0, 28)
+        SideBtn.Font = Enum.Font.Gotham
+        SideBtn.Text = ""
+        SideBtn.ZIndex = 4
+        SideBtn.LayoutOrder = tabCount          -- comes after label (LayoutOrder 0)
+        SideBtn.Parent = CatContainer           -- ← KEY CHANGE: parent to container
+        MakeCorner(SideBtn, 4)
+
+		--------------------------------------------------------------------
+		-- Category:AddTab
+		-- name    = display name of the tab
+		-- icon    = small symbol/emoji shown left of name (optional)
+		-- desc    = description shown in top bar (optional)
+		--------------------------------------------------------------------
+		function Category:AddTab(name, icon, desc)
+			local Tab = {}
+			Tab._name = name
+			Tab._desc = desc or ""
+			Tab._subTabs = {}
+			Tab._activeST = nil
+			Tab._activeSTBtn = nil
+
+			-- Build the 3 sub-tab content frames IMMEDIATELY
+			-- so AddToggle/AddSlider etc. work before the tab is clicked
+			for _, stName in ipairs(SUB_TABS) do
+				local F = Instance.new("Frame")
+				F.Name = "STFrame_" .. name .. "_" .. stName
+				F.BackgroundTransparency = 1
+				F.BorderSizePixel = 0
+				F.Size = UDim2.new(1, 0, 0, 0)
+				F.AutomaticSize = Enum.AutomaticSize.Y
+				F.Visible = false
+				F.ZIndex = 3
+				F.Parent = Content
+				MakeList(F, 4)
+				Tab._subTabs[stName] = {frame = F, btn = nil, underline = nil}
+			end
+
+			-- Sidebar button for this tab
+			local SideBtn = Instance.new("TextButton")
+			SideBtn.Name = "SideBtn_" .. name
+			SideBtn.BackgroundColor3 = C.ITEM
+			SideBtn.BackgroundTransparency = 1
+			SideBtn.BorderSizePixel = 0
+			SideBtn.Size = UDim2.new(1, 0, 0, 28)
+			SideBtn.Font = Enum.Font.Gotham
+			SideBtn.Text = ""
+			SideBtn.ZIndex = 4
+			SideBtn.LayoutOrder = #SideScroll:GetChildren() + 1
+			SideBtn.Parent = SideScroll
+			MakeCorner(SideBtn, 4)
+
+			-- Icon label (left side of button)
+			local IconLbl = Instance.new("TextLabel")
+			IconLbl.Name = "IconLbl"
+			IconLbl.BackgroundTransparency = 1
+			IconLbl.Size = UDim2.new(0, 18, 1, 0)
+			IconLbl.Position = UDim2.new(0, 10, 0, 0)
+			IconLbl.Font = Enum.Font.Gotham
+			IconLbl.Text = icon or "•"
+			IconLbl.TextColor3 = C.TEXT3
+			IconLbl.TextSize = 12
+			IconLbl.ZIndex = 5
+			IconLbl.Parent = SideBtn
+
+			-- Name label
+			local NameLbl = Instance.new("TextLabel")
+			NameLbl.Name = "NameLbl"
+			NameLbl.BackgroundTransparency = 1
+			NameLbl.Size = UDim2.new(1, -34, 1, 0)
+			NameLbl.Position = UDim2.new(0, 30, 0, 0)
+			NameLbl.Font = Enum.Font.Gotham
+			NameLbl.Text = name
+			NameLbl.TextColor3 = C.TEXT2
+			NameLbl.TextSize = 11
+			NameLbl.TextXAlignment = Enum.TextXAlignment.Left
+			NameLbl.ZIndex = 5
+			NameLbl.Parent = SideBtn
+
+			-- Accent bar shown on left when active
+			local AccBar = Instance.new("Frame")
+			AccBar.Name = "AccBar"
+			AccBar.BackgroundColor3 = C.ACCENT
+			AccBar.BorderSizePixel = 0
+			AccBar.Size = UDim2.new(0, 2, 0.6, 0)
+			AccBar.Position = UDim2.new(0, 0, 0.2, 0)
+			AccBar.Visible = false
+			AccBar.ZIndex = 5
+			AccBar.Parent = SideBtn
+			MakeCorner(AccBar, 2)
+
+			-- Hover effects
+			SideBtn.MouseEnter:Connect(function()
+				if Window._activeSideBtn ~= SideBtn then
+					Tween(SideBtn, {BackgroundTransparency = 0.82}, 0.12)
+					Tween(NameLbl, {TextColor3 = C.TEXT1}, 0.12)
+					Tween(IconLbl, {TextColor3 = C.TEXT2}, 0.12)
+				end
+			end)
+			SideBtn.MouseLeave:Connect(function()
+				if Window._activeSideBtn ~= SideBtn then
+					Tween(SideBtn, {BackgroundTransparency = 1}, 0.12)
+					Tween(NameLbl, {TextColor3 = C.TEXT2}, 0.12)
+					Tween(IconLbl, {TextColor3 = C.TEXT3}, 0.12)
+				end
+			end)
+
+			-- Build sub-tab row buttons for this tab
+			local function buildSubTabBtns()
+				-- Clear existing sub-tab buttons
+				for _, child in ipairs(SubRow:GetChildren()) do
+					if child:IsA("TextButton") then
+						child:Destroy()
+					end
+				end
+				-- Create new sub-tab buttons
+				for _, stName in ipairs(SUB_TABS) do
+					local stData = Tab._subTabs[stName]
+
+					local Btn = Instance.new("TextButton")
+					Btn.BackgroundTransparency = 1
+					Btn.BorderSizePixel = 0
+					Btn.Size = UDim2.new(0, 0, 1, 0)
+					Btn.AutomaticSize = Enum.AutomaticSize.X
+					Btn.Font = Enum.Font.GothamBold
+					Btn.Text = stName
+					Btn.TextColor3 = C.TEXT2
+					Btn.TextSize = 11
+					Btn.ZIndex = 4
+					Btn.Parent = SubRow
+					MakePadding(Btn, 0, 0, 4, 4)
+
+					local Underline = Instance.new("Frame")
+					Underline.BackgroundColor3 = C.ACCENT
+					Underline.BorderSizePixel = 0
+					Underline.Size = UDim2.new(1, 0, 0, 2)
+					Underline.Position = UDim2.new(0, 0, 1, -2)
+					Underline.Visible = false
+					Underline.ZIndex = 5
+					Underline.Parent = Btn
+
+					stData.btn = Btn
+					stData.underline = Underline
+
+					local capturedName = stName
+					Btn.MouseButton1Click:Connect(function()
+						Tab:_selectSubTab(capturedName)
+					end)
+				end
+			end
+
+			-- Select a sub-tab by name
+			function Tab:_selectSubTab(stName)
+				local stData = Tab._subTabs[stName]
+				if not stData or not stData.btn then return end
+
+				-- Deselect previous sub-tab
+				if Tab._activeSTBtn then
+					Tween(Tab._activeSTBtn, {TextColor3 = C.TEXT2}, 0.1)
+				end
+				if Tab._activeST and Tab._subTabs[Tab._activeST] then
+					Tab._subTabs[Tab._activeST].underline.Visible = false
+					Tab._subTabs[Tab._activeST].frame.Visible = false
+				end
+
+				-- Activate new sub-tab
+				Tab._activeST = stName
+				Tab._activeSTBtn = stData.btn
+				Tween(stData.btn, {TextColor3 = C.TEXT1}, 0.1)
+				stData.underline.Visible = true
+				stData.frame.Visible = true
+			end
+
+			-- Click handler for sidebar button
+			SideBtn.MouseButton1Click:Connect(function()
+				if Window._activeSideBtn == SideBtn then return end
+
+				-- Hide all other tab content
+				hideAllTabContent()
+
+				-- Deselect previous sidebar button
+				deselectCurrentSideBtn()
+
+				-- Activate this sidebar button
+				Window._activeSideBtn = SideBtn
+				Window._activeSideBtnNameLbl = NameLbl
+				Window._activeSideBtnIconLbl = IconLbl
+				Window._activeSideBtnAccBar = AccBar
+
+				Tween(SideBtn, {BackgroundTransparency = 0.75}, 0.15)
+				Tween(NameLbl, {TextColor3 = C.TEXT1}, 0.15)
+				Tween(IconLbl, {TextColor3 = C.ACCENT_DIM}, 0.15)
+				AccBar.Visible = true
+
+				-- Update top bar
+				TopTitle.Text = name
+				TopDesc.Text = Tab._desc
+
+				-- Build sub-tab buttons for this tab
+				buildSubTabBtns()
+
+				-- Reset and select General
+				Tab._activeST = nil
+				Tab._activeSTBtn = nil
+				Tab:_selectSubTab("General")
+			end)
+
+			-- Helper to get the frame for a given sub-tab name
+			local function getFrame(subTab)
+				local st = subTab or "General"
+				local stData = Tab._subTabs[st]
+				if stData then
+					return stData.frame
+				end
+				return nil
+			end
+
+			------------------------------------------------------------
+			-- Tab:AddToggle
+			-- label       = string
+			-- description = string (optional, pass "" to skip)
+			-- default     = bool
+			-- callback    = function(bool)
+			-- subTab      = "General"|"Additional"|"Misc" (optional)
+			------------------------------------------------------------
+			function Tab:AddToggle(label, description, default, callback, subTab)
+				local frame = getFrame(subTab)
+				if not frame then return end
+
+				local isOn = default or false
+
+				local Row = Instance.new("Frame")
+				Row.BackgroundColor3 = C.ITEM
+				Row.BorderSizePixel = 0
+				Row.Size = UDim2.new(1, 0, 0, 49)
+				Row.ZIndex = 3
+				Row.Parent = frame
+				MakeCorner(Row, 4)
+
+				local LabelTxt = Instance.new("TextLabel")
+				LabelTxt.BackgroundTransparency = 1
+				LabelTxt.Size = UDim2.new(1, -60, 0, 22)
+				LabelTxt.Position = UDim2.new(0, 16, 0, 6)
+				LabelTxt.Font = Enum.Font.GothamBold
+				LabelTxt.Text = label
+				LabelTxt.TextColor3 = C.TEXT1
+				LabelTxt.TextSize = 12
+				LabelTxt.TextXAlignment = Enum.TextXAlignment.Left
+				LabelTxt.ZIndex = 4
+				LabelTxt.Parent = Row
+
+				if description and description ~= "" then
+					local DescTxt = Instance.new("TextLabel")
+					DescTxt.BackgroundTransparency = 1
+					DescTxt.Size = UDim2.new(1, -60, 0, 18)
+					DescTxt.Position = UDim2.new(0, 16, 0, 26)
+					DescTxt.Font = Enum.Font.Gotham
+					DescTxt.Text = description
+					DescTxt.TextColor3 = C.TEXT3
+					DescTxt.TextSize = 10
+					DescTxt.TextXAlignment = Enum.TextXAlignment.Left
+					DescTxt.TextWrapped = true
+					DescTxt.ZIndex = 4
+					DescTxt.Parent = Row
+				end
+
+				local ToggleBG = Instance.new("Frame")
+				ToggleBG.BackgroundColor3 = C.TOG_BG
+				ToggleBG.BorderSizePixel = 0
+				ToggleBG.Size = UDim2.new(0, 38, 0, 20)
+				ToggleBG.Position = UDim2.new(1, -54, 0.5, -10)
+				ToggleBG.ZIndex = 4
+				ToggleBG.Parent = Row
+				MakeCorner(ToggleBG, 10)
+
+				local Knob = Instance.new("TextButton")
+				Knob.BackgroundColor3 = isOn and C.TOG_ON or C.TOG_OFF
+				Knob.BorderSizePixel = 0
+				Knob.Size = UDim2.new(0, 16, 0, 16)
+				Knob.Position = isOn and UDim2.new(0, 18, 0.5, -8) or UDim2.new(1, -34, 0.5, -8)
+				Knob.Text = ""
+				Knob.ZIndex = 5
+				Knob.Parent = ToggleBG
+				MakeCorner(Knob, 8)
+
+				local Dot = Instance.new("Frame")
+				Dot.BackgroundColor3 = C.TOG_BG
+				Dot.BorderSizePixel = 0
+				Dot.Size = UDim2.new(0, 8, 0, 8)
+				Dot.Position = UDim2.new(0.5, -4, 0.5, -4)
+				Dot.ZIndex = 6
+				Dot.Parent = Knob
+				MakeCorner(Dot, 4)
+
+				local function updateToggle()
+					if isOn then
+						Tween(Knob, {Position = UDim2.new(0, 18, 0.5, -8), BackgroundColor3 = C.TOG_ON}, 0.2)
+					else
+						Tween(Knob, {Position = UDim2.new(1, -34, 0.5, -8), BackgroundColor3 = C.TOG_OFF}, 0.2)
+					end
+				end
+
+				local function doToggle()
+					isOn = not isOn
+					updateToggle()
+					if callback then callback(isOn) end
+				end
+
+				Knob.MouseButton1Click:Connect(doToggle)
+
+				local ctrl = {}
+				function ctrl:Set(val)
+					isOn = val
+					updateToggle()
+					if callback then callback(isOn) end
+				end
+				function ctrl:Get()
+					return isOn
+				end
+				return ctrl
+			end
+
+			------------------------------------------------------------
+			-- Tab:AddButton
+			-- label       = string
+			-- description = string or function (if function, skips description)
+			-- callback    = function()
+			-- subTab      = "General"|"Additional"|"Misc" (optional)
+			------------------------------------------------------------
+			function Tab:AddButton(label, description, callback, subTab)
+				if type(description) == "function" then
+					subTab = callback
+					callback = description
+					description = nil
+				end
+				local frame = getFrame(subTab)
+				if not frame then return end
+
+				local Row = Instance.new("TextButton")
+				Row.BackgroundColor3 = C.ITEM
+				Row.BorderSizePixel = 0
+				Row.Size = UDim2.new(1, 0, 0, description and 49 or 36)
+				Row.Font = Enum.Font.GothamBold
+				Row.Text = ""
+				Row.ZIndex = 3
+				Row.Parent = frame
+				MakeCorner(Row, 4)
+
+				local LabelTxt = Instance.new("TextLabel")
+				LabelTxt.BackgroundTransparency = 1
+				LabelTxt.Size = UDim2.new(1, -40, 0, 22)
+				LabelTxt.Position = UDim2.new(0, 16, 0, description and 6 or 7)
+				LabelTxt.Font = Enum.Font.GothamBold
+				LabelTxt.Text = label
+				LabelTxt.TextColor3 = C.TEXT1
+				LabelTxt.TextSize = 12
+				LabelTxt.TextXAlignment = Enum.TextXAlignment.Left
+				LabelTxt.ZIndex = 4
+				LabelTxt.Parent = Row
+
+				if description then
+					local DescTxt = Instance.new("TextLabel")
+					DescTxt.BackgroundTransparency = 1
+					DescTxt.Size = UDim2.new(1, -40, 0, 16)
+					DescTxt.Position = UDim2.new(0, 16, 0, 27)
+					DescTxt.Font = Enum.Font.Gotham
+					DescTxt.Text = description
+					DescTxt.TextColor3 = C.TEXT3
+					DescTxt.TextSize = 10
+					DescTxt.TextXAlignment = Enum.TextXAlignment.Left
+					DescTxt.ZIndex = 4
+					DescTxt.Parent = Row
+				end
+
+				local Arrow = Instance.new("TextLabel")
+				Arrow.BackgroundTransparency = 1
+				Arrow.Size = UDim2.new(0, 20, 0, 20)
+				Arrow.Position = UDim2.new(1, -28, 0.5, -10)
+				Arrow.Font = Enum.Font.GothamBold
+				Arrow.Text = "›"
+				Arrow.TextColor3 = C.ACCENT_DIM
+				Arrow.TextSize = 18
+				Arrow.ZIndex = 4
+				Arrow.Parent = Row
+
+				Row.MouseEnter:Connect(function()
+					Tween(Row, {BackgroundColor3 = C.ITEM_HOVER}, 0.1)
+				end)
+				Row.MouseLeave:Connect(function()
+					Tween(Row, {BackgroundColor3 = C.ITEM}, 0.1)
+				end)
+				Row.MouseButton1Click:Connect(function()
+					if callback then callback() end
+				end)
+			end
+
+			------------------------------------------------------------
+			-- Tab:AddSlider
+			-- label       = string
+			-- description = string or number (if number, skips description)
+			-- min         = number
+			-- max         = number
+			-- default     = number
+			-- callback    = function(number)
+			-- subTab      = "General"|"Additional"|"Misc" (optional)
+			------------------------------------------------------------
+			function Tab:AddSlider(label, description, min, max, default, callback, subTab)
+				if type(description) == "number" then
+					subTab = callback
+					callback = default
+					default = max
+					max = min
+					min = description
+					description = nil
+				end
+				local frame = getFrame(subTab)
+				if not frame then return end
+
+				local value = default or min
+
+				local Row = Instance.new("Frame")
+				Row.BackgroundColor3 = C.ITEM
+				Row.BorderSizePixel = 0
+				Row.Size = UDim2.new(1, 0, 0, 60)
+				Row.ZIndex = 3
+				Row.Parent = frame
+				MakeCorner(Row, 4)
+
+				local LabelTxt = Instance.new("TextLabel")
+				LabelTxt.BackgroundTransparency = 1
+				LabelTxt.Size = UDim2.new(1, -70, 0, 20)
+				LabelTxt.Position = UDim2.new(0, 16, 0, 6)
+				LabelTxt.Font = Enum.Font.GothamBold
+				LabelTxt.Text = label
+				LabelTxt.TextColor3 = C.TEXT1
+				LabelTxt.TextSize = 12
+				LabelTxt.TextXAlignment = Enum.TextXAlignment.Left
+				LabelTxt.ZIndex = 4
+				LabelTxt.Parent = Row
+
+				local ValueTxt = Instance.new("TextLabel")
+				ValueTxt.BackgroundTransparency = 1
+				ValueTxt.Size = UDim2.new(0, 50, 0, 20)
+				ValueTxt.Position = UDim2.new(1, -64, 0, 6)
+				ValueTxt.Font = Enum.Font.GothamBold
+				ValueTxt.Text = tostring(value)
+				ValueTxt.TextColor3 = C.ACCENT_DIM
+				ValueTxt.TextSize = 12
+				ValueTxt.TextXAlignment = Enum.TextXAlignment.Right
+				ValueTxt.ZIndex = 4
+				ValueTxt.Parent = Row
+
+				if description then
+					local DescTxt = Instance.new("TextLabel")
+					DescTxt.BackgroundTransparency = 1
+					DescTxt.Size = UDim2.new(1, -16, 0, 14)
+					DescTxt.Position = UDim2.new(0, 16, 0, 25)
+					DescTxt.Font = Enum.Font.Gotham
+					DescTxt.Text = description
+					DescTxt.TextColor3 = C.TEXT3
+					DescTxt.TextSize = 10
+					DescTxt.ZIndex = 4
+					DescTxt.Parent = Row
+				end
+
+				local TrackBG = Instance.new("Frame")
+				TrackBG.BackgroundColor3 = Color3.fromRGB(25, 25, 32)
+				TrackBG.BorderSizePixel = 0
+				TrackBG.Size = UDim2.new(1, -32, 0, 4)
+				TrackBG.Position = UDim2.new(0, 16, 1, -18)
+				TrackBG.ZIndex = 4
+				TrackBG.Parent = Row
+				MakeCorner(TrackBG, 2)
+
+				local Fill = Instance.new("Frame")
+				Fill.BackgroundColor3 = C.ACCENT
+				Fill.BorderSizePixel = 0
+				Fill.Size = UDim2.new((value - min) / (max - min), 0, 1, 0)
+				Fill.ZIndex = 5
+				Fill.Parent = TrackBG
+				MakeCorner(Fill, 2)
+
+				local SliderKnob = Instance.new("TextButton")
+				SliderKnob.BackgroundColor3 = C.TEXT1
+				SliderKnob.BorderSizePixel = 0
+				SliderKnob.Size = UDim2.new(0, 12, 0, 12)
+				SliderKnob.Position = UDim2.new((value - min) / (max - min), -6, 0.5, -6)
+				SliderKnob.Text = ""
+				SliderKnob.ZIndex = 6
+				SliderKnob.Parent = TrackBG
+				MakeCorner(SliderKnob, 6)
+
+				local draggingSlider = false
+				SliderKnob.MouseButton1Down:Connect(function()
+					draggingSlider = true
+				end)
+				UserInputService.InputEnded:Connect(function(input)
+					if input.UserInputType == Enum.UserInputType.MouseButton1 then
+						draggingSlider = false
+					end
+				end)
+				UserInputService.InputChanged:Connect(function(input)
+					if draggingSlider and input.UserInputType == Enum.UserInputType.MouseMovement then
+						local absPos = TrackBG.AbsolutePosition.X
+						local absSize = TrackBG.AbsoluteSize.X
+						local pct = math.clamp((input.Position.X - absPos) / absSize, 0, 1)
+						value = math.floor(min + (max - min) * pct + 0.5)
+						ValueTxt.Text = tostring(value)
+						Fill.Size = UDim2.new(pct, 0, 1, 0)
+						SliderKnob.Position = UDim2.new(pct, -6, 0.5, -6)
+						if callback then callback(value) end
+					end
+				end)
+
+				local ctrl = {}
+				function ctrl:Set(v)
+					value = math.clamp(v, min, max)
+					local pct = (value - min) / (max - min)
+					ValueTxt.Text = tostring(value)
+					Fill.Size = UDim2.new(pct, 0, 1, 0)
+					SliderKnob.Position = UDim2.new(pct, -6, 0.5, -6)
+					if callback then callback(value) end
+				end
+				function ctrl:Get()
+					return value
+				end
+				return ctrl
+			end
+
+			------------------------------------------------------------
+			-- Tab:AddTextbox
+			-- label       = string
+			-- placeholder = string
+			-- callback    = function(text, enterPressed)
+			-- subTab      = "General"|"Additional"|"Misc" (optional)
+			------------------------------------------------------------
+			function Tab:AddTextbox(label, placeholder, callback, subTab)
+				local frame = getFrame(subTab)
+				if not frame then return end
+
+				local Row = Instance.new("Frame")
+				Row.BackgroundColor3 = C.ITEM
+				Row.BorderSizePixel = 0
+				Row.Size = UDim2.new(1, 0, 0, 56)
+				Row.ZIndex = 3
+				Row.Parent = frame
+				MakeCorner(Row, 4)
+
+				local LabelTxt = Instance.new("TextLabel")
+				LabelTxt.BackgroundTransparency = 1
+				LabelTxt.Size = UDim2.new(1, -16, 0, 20)
+				LabelTxt.Position = UDim2.new(0, 16, 0, 5)
+				LabelTxt.Font = Enum.Font.GothamBold
+				LabelTxt.Text = label
+				LabelTxt.TextColor3 = C.TEXT1
+				LabelTxt.TextSize = 12
+				LabelTxt.TextXAlignment = Enum.TextXAlignment.Left
+				LabelTxt.ZIndex = 4
+				LabelTxt.Parent = Row
+
+				local InputFrame = Instance.new("Frame")
+				InputFrame.BackgroundColor3 = C.INPUT_BG
+				InputFrame.BorderSizePixel = 0
+				InputFrame.Size = UDim2.new(1, -32, 0, 22)
+				InputFrame.Position = UDim2.new(0, 16, 0, 28)
+				InputFrame.ZIndex = 4
+				InputFrame.Parent = Row
+				MakeCorner(InputFrame, 4)
+
+				local InputBox = Instance.new("TextBox")
+				InputBox.BackgroundTransparency = 1
+				InputBox.Size = UDim2.new(1, -12, 1, 0)
+				InputBox.Position = UDim2.new(0, 6, 0, 0)
+				InputBox.Font = Enum.Font.Gotham
+				InputBox.PlaceholderText = placeholder or ""
+				InputBox.PlaceholderColor3 = C.TEXT3
+				InputBox.Text = ""
+				InputBox.TextColor3 = C.TEXT1
+				InputBox.TextSize = 11
+				InputBox.TextXAlignment = Enum.TextXAlignment.Left
+				InputBox.ClearTextOnFocus = false
+				InputBox.ZIndex = 5
+				InputBox.Parent = InputFrame
+
+				InputBox.FocusLost:Connect(function(enterPressed)
+					if callback then callback(InputBox.Text, enterPressed) end
+				end)
+
+				local ctrl = {}
+				function ctrl:Set(v) InputBox.Text = v end
+				function ctrl:Get() return InputBox.Text end
+				return ctrl
+			end
+
+			------------------------------------------------------------
+			-- Tab:AddDropdown
+			-- label    = string
+			-- options  = table of strings
+			-- default  = string (or function to skip)
+			-- callback = function(selected)
+			-- subTab   = "General"|"Additional"|"Misc" (optional)
+			------------------------------------------------------------
+			function Tab:AddDropdown(label, options, default, callback, subTab)
+				if type(default) == "function" then
+					subTab = callback
+					callback = default
+					default = options[1]
+				end
+				local frame = getFrame(subTab)
+				if not frame then return end
+
+				local selected = default or options[1]
+				local open = false
+
+				local Row = Instance.new("Frame")
+				Row.BackgroundColor3 = C.ITEM
+				Row.BorderSizePixel = 0
+				Row.Size = UDim2.new(1, 0, 0, 49)
+				Row.ClipsDescendants = false
+				Row.ZIndex = 10
+				Row.Parent = frame
+				MakeCorner(Row, 4)
+
+				local LabelTxt = Instance.new("TextLabel")
+				LabelTxt.BackgroundTransparency = 1
+				LabelTxt.Size = UDim2.new(1, -16, 0, 20)
+				LabelTxt.Position = UDim2.new(0, 16, 0, 6)
+				LabelTxt.Font = Enum.Font.GothamBold
+				LabelTxt.Text = label
+				LabelTxt.TextColor3 = C.TEXT1
+				LabelTxt.TextSize = 12
+				LabelTxt.TextXAlignment = Enum.TextXAlignment.Left
+				LabelTxt.ZIndex = 11
+				LabelTxt.Parent = Row
+
+				local DropBtn = Instance.new("TextButton")
+				DropBtn.BackgroundColor3 = C.INPUT_BG
+				DropBtn.BorderSizePixel = 0
+				DropBtn.Size = UDim2.new(1, -32, 0, 22)
+				DropBtn.Position = UDim2.new(0, 16, 0, 22)
+				DropBtn.Font = Enum.Font.Gotham
+				DropBtn.Text = selected
+				DropBtn.TextColor3 = C.TEXT2
+				DropBtn.TextSize = 11
+				DropBtn.TextXAlignment = Enum.TextXAlignment.Left
+				DropBtn.ZIndex = 11
+				DropBtn.Parent = Row
+				MakeCorner(DropBtn, 4)
+				MakePadding(DropBtn, 0, 0, 8, 8)
+
+				local DropArrow = Instance.new("TextLabel")
+				DropArrow.BackgroundTransparency = 1
+				DropArrow.Size = UDim2.new(0, 20, 1, 0)
+				DropArrow.Position = UDim2.new(1, -22, 0, 0)
+				DropArrow.Font = Enum.Font.GothamBold
+				DropArrow.Text = "▾"
+				DropArrow.TextColor3 = C.TEXT3
+				DropArrow.TextSize = 12
+				DropArrow.ZIndex = 12
+				DropArrow.Parent = DropBtn
+
+				local DropList = Instance.new("Frame")
+				DropList.BackgroundColor3 = C.DROPDOWN_BG
+				DropList.BorderSizePixel = 0
+				DropList.Size = UDim2.new(1, -32, 0, #options * 26 + 4)
+				DropList.Position = UDim2.new(0, 16, 0, 47)
+				DropList.Visible = false
+				DropList.ZIndex = 20
+				DropList.Parent = Row
+				MakeCorner(DropList, 4)
+				MakePadding(DropList, 2, 2, 4, 4)
+				MakeList(DropList, 2)
+
+				for _, opt in ipairs(options) do
+					local OptBtn = Instance.new("TextButton")
+					OptBtn.BackgroundColor3 = C.DROPDOWN_BG
+					OptBtn.BackgroundTransparency = 1
+					OptBtn.BorderSizePixel = 0
+					OptBtn.Size = UDim2.new(1, 0, 0, 22)
+					OptBtn.Font = Enum.Font.Gotham
+					OptBtn.Text = opt
+					OptBtn.TextColor3 = opt == selected and C.TEXT1 or C.TEXT2
+					OptBtn.TextSize = 11
+					OptBtn.TextXAlignment = Enum.TextXAlignment.Left
+					OptBtn.ZIndex = 21
+					OptBtn.Parent = DropList
+					MakePadding(OptBtn, 0, 0, 6, 6)
+					MakeCorner(OptBtn, 3)
+
+					OptBtn.MouseEnter:Connect(function()
+						Tween(OptBtn, {BackgroundTransparency = 0.7}, 0.1)
+					end)
+					OptBtn.MouseLeave:Connect(function()
+						Tween(OptBtn, {BackgroundTransparency = 1}, 0.1)
+					end)
+					OptBtn.MouseButton1Click:Connect(function()
+						selected = opt
+						DropBtn.Text = opt
+						for _, o in ipairs(DropList:GetChildren()) do
+							if o:IsA("TextButton") then
+								o.TextColor3 = o.Text == selected and C.TEXT1 or C.TEXT2
+							end
+						end
+						open = false
+						DropList.Visible = false
+						Tween(DropArrow, {Rotation = 0}, 0.15)
+						if callback then callback(selected) end
+					end)
+				end
+
+				DropBtn.MouseButton1Click:Connect(function()
+					open = not open
+					DropList.Visible = open
+					Tween(DropArrow, {Rotation = open and 180 or 0}, 0.15)
+				end)
+
+				local ctrl = {}
+				function ctrl:Set(v)
+					selected = v
+					DropBtn.Text = v
+					if callback then callback(selected) end
+				end
+				function ctrl:Get() return selected end
+				return ctrl
+			end
+
+			------------------------------------------------------------
+			-- Tab:AddLabel
+			------------------------------------------------------------
+			function Tab:AddLabel(text, subTab)
+				local frame = getFrame(subTab)
+				if not frame then return end
+
+				local Row = Instance.new("Frame")
+				Row.BackgroundColor3 = C.ITEM
+				Row.BorderSizePixel = 0
+				Row.Size = UDim2.new(1, 0, 0, 32)
+				Row.ZIndex = 3
+				Row.Parent = frame
+				MakeCorner(Row, 4)
+
+				local LabelTxt = Instance.new("TextLabel")
+				LabelTxt.BackgroundTransparency = 1
+				LabelTxt.Size = UDim2.new(1, -16, 1, 0)
+				LabelTxt.Position = UDim2.new(0, 16, 0, 0)
+				LabelTxt.Font = Enum.Font.Gotham
+				LabelTxt.Text = text
+				LabelTxt.TextColor3 = C.TEXT2
+				LabelTxt.TextSize = 11
+				LabelTxt.TextXAlignment = Enum.TextXAlignment.Left
+				LabelTxt.ZIndex = 4
+				LabelTxt.Parent = Row
+
+				local ctrl = {}
+				function ctrl:Set(v) LabelTxt.Text = v end
+				function ctrl:Get() return LabelTxt.Text end
+				return ctrl
+			end
+
+			------------------------------------------------------------
+			-- Tab:AddSeparator
+			------------------------------------------------------------
+			function Tab:AddSeparator(subTab)
+				local frame = getFrame(subTab)
+				if not frame then return end
+
+				local Sep = Instance.new("Frame")
+				Sep.BackgroundColor3 = C.DIVIDER
+				Sep.BorderSizePixel = 0
+				Sep.Size = UDim2.new(1, 0, 0, 1)
+				Sep.ZIndex = 3
+				Sep.Parent = frame
+			end
+
+			table.insert(Window._tabs, Tab)
+			return Tab
+		end
+
+		return Category
+	end
+
+	return Window
+end
+
+return NeronLib
