@@ -1023,142 +1023,113 @@ function NeronLib:CreateWindow(title, dragStiffness, dragDamping)
 				return stData and stData.frame or nil
 			end
 
-			-- --------------------------------------------------------
-			-- Tab:AddToggle
-			-- --------------------------------------------------------
-			function Tab:AddToggle(idx, opts)
-				-- Support old positional API: (label, desc, default, cb, subTab)
-				local label, description, default, callback, subTab, tooltip
-				if type(idx) == "table" then
-					-- new-style single-table (future-proof)
-					label = idx.Text; description = idx.Tooltip; default = idx.Default
-					callback = idx.Callback; subTab = idx.SubTab
-				elseif type(opts) == "table" then
-					label = opts.Text or idx; description = opts.Tooltip
-					default = opts.Default; callback = opts.Callback; subTab = opts.SubTab
-				else
-					label = idx; description = opts; default = arguments and arguments[3]
-					-- fallback to positional
-					label = idx
-					description = opts
-					-- opts IS the description string in old API
-					local _a = {...}  -- can't do vararg inside method, use named params below
-				end
-				-- Unified positional fallback handled by overload below
-				return Tab:_addToggleImpl(label, description, default, callback, subTab)
-			end
+------------------------------------------------------------
+-- Tab:AddToggle
+------------------------------------------------------------
+function Tab:_addToggleImpl(label, description, default, callback, subTab, idx)
+    local frame = getFrame(subTab)
+    if not frame then return end
+    local isOn = (default == true)
 
-			function Tab:_addToggleImpl(label, description, default, callback, subTab, idx)
-				local frame = getFrame(subTab)
-				if not frame then return end
-				local isOn = (default == true)
+    local Row = Instance.new("Frame")
+    Row.BackgroundColor3 = C.ITEM
+    Row.BorderSizePixel  = 0
+    Row.Size             = UDim2.new(1, 0, 0, (description and description ~= "") and 49 or 36)
+    Row.ZIndex           = 3
+    Row.Parent           = frame
+    MakeCorner(Row, 4)
 
-				local Row = Instance.new("Frame")
-				Row.BackgroundColor3 = C.ITEM
-				Row.BorderSizePixel  = 0
-				Row.Size             = UDim2.new(1, 0, 0, (description and description ~= "") and 49 or 36)
-				Row.ZIndex           = 3
-				Row.Parent           = frame
-				MakeCorner(Row, 4)
+    local LabelTxt = Instance.new("TextLabel")
+    LabelTxt.BackgroundTransparency = 1
+    LabelTxt.Size           = UDim2.new(1, -60, 0, 22)
+    LabelTxt.Position       = UDim2.new(0, 16, 0, (description and description ~= "") and 6 or 7)
+    LabelTxt.Font           = Enum.Font.GothamBold
+    LabelTxt.Text           = label
+    LabelTxt.TextColor3     = C.TEXT1
+    LabelTxt.TextSize       = 12
+    LabelTxt.TextXAlignment = Enum.TextXAlignment.Left
+    LabelTxt.ZIndex         = 4
+    LabelTxt.Parent         = Row
 
-				local LabelTxt = Instance.new("TextLabel")
-				LabelTxt.BackgroundTransparency = 1
-				LabelTxt.Size           = UDim2.new(1, -60, 0, 22)
-				LabelTxt.Position       = UDim2.new(0, 16, 0, (description and description ~= "") and 6 or 7)
-				LabelTxt.Font           = Enum.Font.GothamBold
-				LabelTxt.Text           = label
-				LabelTxt.TextColor3     = C.TEXT1
-				LabelTxt.TextSize       = 12
-				LabelTxt.TextXAlignment = Enum.TextXAlignment.Left
-				LabelTxt.ZIndex         = 4
-				LabelTxt.Parent         = Row
+    if description and description ~= "" then
+        local DescTxt = Instance.new("TextLabel")
+        DescTxt.BackgroundTransparency = 1
+        DescTxt.Size           = UDim2.new(1, -60, 0, 18)
+        DescTxt.Position       = UDim2.new(0, 16, 0, 26)
+        DescTxt.Font           = Enum.Font.Gotham
+        DescTxt.Text           = description
+        DescTxt.TextColor3     = C.TEXT3
+        DescTxt.TextSize       = 10
+        DescTxt.TextXAlignment = Enum.TextXAlignment.Left
+        DescTxt.TextWrapped    = true
+        DescTxt.ZIndex         = 4
+        DescTxt.Parent         = Row
+    end
 
-				if description and description ~= "" then
-					local DescTxt = Instance.new("TextLabel")
-					DescTxt.BackgroundTransparency = 1
-					DescTxt.Size           = UDim2.new(1, -60, 0, 18)
-					DescTxt.Position       = UDim2.new(0, 16, 0, 26)
-					DescTxt.Font           = Enum.Font.Gotham
-					DescTxt.Text           = description
-					DescTxt.TextColor3     = C.TEXT3
-					DescTxt.TextSize       = 10
-					DescTxt.TextXAlignment = Enum.TextXAlignment.Left
-					DescTxt.TextWrapped    = true
-					DescTxt.ZIndex         = 4
-					DescTxt.Parent         = Row
-				end
+    local ToggleBG = Instance.new("Frame")
+    ToggleBG.BackgroundColor3 = C.TOG_BG
+    ToggleBG.BorderSizePixel  = 0
+    ToggleBG.Size             = UDim2.new(0, 38, 0, 20)
+    ToggleBG.Position         = UDim2.new(1, -54, 0.5, -10)
+    ToggleBG.ZIndex           = 4
+    ToggleBG.Parent           = Row
+    MakeCorner(ToggleBG, 10)
 
-				local ToggleBG = Instance.new("Frame")
-				ToggleBG.BackgroundColor3 = C.TOG_BG
-				ToggleBG.BorderSizePixel  = 0
-				ToggleBG.Size             = UDim2.new(0, 38, 0, 20)
-				ToggleBG.Position         = UDim2.new(1, -54, 0.5, -10)
-				ToggleBG.ZIndex           = 4
-				ToggleBG.Parent           = Row
-				MakeCorner(ToggleBG, 10)
+    local Knob = Instance.new("TextButton")
+    Knob.BackgroundColor3 = isOn and C.TOG_ON or C.TOG_OFF
+    Knob.BorderSizePixel  = 0
+    Knob.Size             = UDim2.new(0, 16, 0, 16)
+    Knob.Position         = isOn and UDim2.new(0, 18, 0.5, -8) or UDim2.new(0, 2, 0.5, -8)
+    Knob.Text             = ""
+    Knob.ZIndex           = 5
+    Knob.Parent           = ToggleBG
+    MakeCorner(Knob, 8)
 
-				local Knob = Instance.new("TextButton")
-				Knob.BackgroundColor3 = isOn and C.TOG_ON or C.TOG_OFF
-				Knob.BorderSizePixel  = 0
-				Knob.Size             = UDim2.new(0, 16, 0, 16)
-				Knob.Position         = isOn and UDim2.new(0, 18, 0.5, -8) or UDim2.new(0, 2, 0.5, -8)
-				Knob.Text             = ""
-				Knob.ZIndex           = 5
-				Knob.Parent           = ToggleBG
-				MakeCorner(Knob, 8)
+    local function updateToggle()
+        Tween(Knob, {
+            Position         = isOn and UDim2.new(0, 18, 0.5, -8) or UDim2.new(0, 2, 0.5, -8),
+            BackgroundColor3 = isOn and C.TOG_ON or C.TOG_OFF
+        }, 0.2)
+    end
 
-				local function updateToggle()
-					Tween(Knob, {
-						Position        = isOn and UDim2.new(0, 18, 0.5, -8) or UDim2.new(0, 2, 0.5, -8),
-						BackgroundColor3 = isOn and C.TOG_ON or C.TOG_OFF
-					}, 0.2)
-				end
+    local ctrl = MakeCtrl({Value = isOn})
 
-				local ctrl = MakeCtrl({Value = isOn})
+    local function doToggle()
+        isOn       = not isOn
+        ctrl.Value = isOn
+        updateToggle()
+        if callback then callback(isOn) end
+        ctrl:_fire()
+    end
 
-				local function doToggle()
-					isOn      = not isOn
-					ctrl.Value = isOn
-					updateToggle()
-					if callback then callback(isOn) end
-					ctrl:_fire()
-				end
+    Knob.MouseButton1Click:Connect(doToggle)
 
-				Knob.MouseButton1Click:Connect(doToggle)
-				Row.InputBegan:Connect(function(i)
-					if i.UserInputType == Enum.UserInputType.MouseButton1 then doToggle() end
-				end)
+    function ctrl:Set(val)
+        isOn       = val
+        self.Value = val
+        updateToggle()
+        if callback then callback(isOn) end
+        self:_fire()
+    end
+    function ctrl:SetValue(val) self:Set(val) end
+    function ctrl:Get() return isOn end
 
-				function ctrl:Set(val)
-					isOn       = val
-					self.Value = val
-					updateToggle()
-					if callback then callback(isOn) end
-					self:_fire()
-				end
-				function ctrl:SetValue(val) self:Set(val) end
-				function ctrl:Get() return isOn end
+    ctrl._depBoxes = {}
 
-				-- Dep box support: list of depboxes watching this toggle
-				ctrl._depBoxes = {}
+    if idx then
+        Toggles[idx] = ctrl
+    end
+    return ctrl
+end
 
-				if idx then
-					Toggles[idx] = ctrl
-				end
-				return ctrl
-			end
-
-			-- Overload: positional API backward compat
-			local _origAddToggle = Tab.AddToggle
-			Tab.AddToggle = function(self, a, b, c, d, e)
-				if type(b) == "table" then
-					-- new API: (idx_string, opts_table)
-					return self:_addToggleImpl(b.Text or a, b.Tooltip, b.Default, b.Callback, b.SubTab, a)
-				else
-					-- old API: (label, desc, default, cb, subTab)
-					return self:_addToggleImpl(a, b, c, d, e)
-				end
-			end
+-- Dispatch: new API (idx, opts table) or old positional API
+Tab.AddToggle = function(self, a, b, c, d, e)
+    if type(b) == "table" then
+        return self:_addToggleImpl(b.Text or a, b.Tooltip, b.Default, b.Callback, b.SubTab, a)
+    else
+        return self:_addToggleImpl(a, b, c, d, e)
+    end
+end
 
 			-- --------------------------------------------------------
 			-- Tab:AddButton  (with sub-button chaining)
