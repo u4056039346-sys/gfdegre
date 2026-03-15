@@ -86,7 +86,7 @@ function NeronLib:CreateWindow(title)
 	-- Dragging
 	local dragging, dragStart, startPos
 	local targetPos = Main.Position
-	local lerpSpeed = 0.10 -- lower = smoother/slower, higher = snappier
+	local lerpSpeed = 0.15 -- lower = smoother/slower, higher = snappier (try 0.1 to 0.5)
 
 	Main.InputBegan:Connect(function(input)
 		if input.UserInputType == Enum.UserInputType.MouseButton1 then
@@ -111,11 +111,12 @@ function NeronLib:CreateWindow(title)
 		end
 	end)
 
-	-- Smooth lerp loop
+	-- Smooth lerp loop: alpha drives how fast it catches up each frame
+	-- e.g. 0.15 = very floaty, 0.25 = smooth, 0.4 = snappy
 	game:GetService("RunService").RenderStepped:Connect(function(dt)
 		if dragging then
 			local cur = Main.Position
-			local alpha = math.min(1, lerpSpeed + dt * 8)
+			local alpha = 1 - (1 - lerpSpeed) ^ (dt * 60)
 			Main.Position = UDim2.new(
 				cur.X.Scale  + (targetPos.X.Scale  - cur.X.Scale)  * alpha,
 				cur.X.Offset + (targetPos.X.Offset - cur.X.Offset) * alpha,
