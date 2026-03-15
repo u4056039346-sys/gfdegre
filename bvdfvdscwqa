@@ -36,6 +36,32 @@ local function MakeList(parent, padding, fillDirection)
 	return l
 end
 
+-- Format a number with rounding decimal places
+local function FormatValue(value, rounding)
+	if rounding == nil or rounding == 0 then
+		return tostring(math.floor(value + 0.5))
+	end
+	local fmt = "%." .. tostring(rounding) .. "f"
+	-- count decimal places in rounding step
+	local stepStr = tostring(rounding)
+	local dotPos = stepStr:find("%.")
+	if not dotPos then
+		return tostring(math.floor(value / rounding + 0.5) * rounding)
+	end
+	local decimals = #stepStr - dotPos
+	local rounded = math.floor(value / rounding + 0.5) * rounding
+	return string.format("%." .. decimals .. "f", rounded)
+end
+
+-- Round value to nearest rounding step
+local function RoundValue(value, min, max, rounding)
+	if rounding == nil or rounding == 0 then
+		return math.floor(math.clamp(value, min, max) + 0.5)
+	end
+	local snapped = math.floor(value / rounding + 0.5) * rounding
+	return math.clamp(snapped, min, max)
+end
+
 -- Color palette
 local C = {
 	BG          = Color3.fromRGB(14, 14, 18),
@@ -54,9 +80,18 @@ local C = {
 	DIVIDER     = Color3.fromRGB(22, 22, 30),
 	INPUT_BG    = Color3.fromRGB(12, 12, 16),
 	DROPDOWN_BG = Color3.fromRGB(12, 12, 16),
+	KEYBIND_BG  = Color3.fromRGB(20, 20, 28),
+	KEYBIND_ACT = Color3.fromRGB(130, 132, 200),
 }
 
 local SUB_TABS = {"General", "Additional", "Misc"}
+
+-- Key name display helper
+local function KeyName(keyCode)
+	if keyCode == nil then return "None" end
+	local name = tostring(keyCode):gsub("Enum.KeyCode.", "")
+	return name
+end
 
 function NeronLib:CreateWindow(title, dragStiffness, dragDamping)
 	local Window = {}
@@ -96,7 +131,6 @@ function NeronLib:CreateWindow(title, dragStiffness, dragDamping)
 			hasMoved = false
 			grabOffsetX = input.Position.X - Main.AbsolutePosition.X
 			grabOffsetY = input.Position.Y - Main.AbsolutePosition.Y
-			-- start target exactly where window already is
 			targetX = Main.AbsolutePosition.X
 			targetY = Main.AbsolutePosition.Y
 			velX, velY = 0, 0
@@ -355,7 +389,6 @@ function NeronLib:CreateWindow(title, dragStiffness, dragDamping)
 	function Window:AddCategory(categoryName)
 		local Category = {}
 
-		-- Container frame that groups label + tabs together
 		local CatContainer = Instance.new("Frame")
 		CatContainer.Name = "CatContainer_" .. categoryName
 		CatContainer.BackgroundTransparency = 1
@@ -367,7 +400,6 @@ function NeronLib:CreateWindow(title, dragStiffness, dragDamping)
 		CatContainer.Parent = SideScroll
 		MakeList(CatContainer, 1)
 
-		-- Category header label
 		local CatLabel = Instance.new("TextLabel")
 		CatLabel.Name = "CatLabel_" .. categoryName
 		CatLabel.BackgroundTransparency = 1
@@ -394,7 +426,6 @@ function NeronLib:CreateWindow(title, dragStiffness, dragDamping)
 			Tab._activeST = nil
 			Tab._activeSTBtn = nil
 
-			-- Build the 3 sub-tab content frames
 			for _, stName in ipairs(SUB_TABS) do
 				local F = Instance.new("Frame")
 				F.Name = "STFrame_" .. name .. "_" .. stName
@@ -406,14 +437,12 @@ function NeronLib:CreateWindow(title, dragStiffness, dragDamping)
 				F.ZIndex = 3
 				F.Parent = Content
 				MakeList(F, 4)
-				-- UIPadding used to animate a slide-in offset
 				local FPad = Instance.new("UIPadding")
 				FPad.PaddingTop = UDim.new(0, 0)
 				FPad.Parent = F
 				Tab._subTabs[stName] = {frame = F, pad = FPad, btn = nil, underline = nil}
 			end
 
-			-- Sidebar button parented to CatContainer (not SideScroll)
 			local SideBtn = Instance.new("TextButton")
 			SideBtn.Name = "SideBtn_" .. name
 			SideBtn.BackgroundColor3 = C.ITEM
@@ -537,12 +566,10 @@ function NeronLib:CreateWindow(title, dragStiffness, dragDamping)
 				Tween(stData.btn, {TextColor3 = C.TEXT1}, 0.1)
 				stData.underline.Visible = true
 
-				-- Slide + fade in the new frame
 				if stData.pad then
 					stData.pad.PaddingTop = UDim.new(0, 10)
 				end
 				stData.frame.Visible = true
-				-- animate children transparency fade-in
 				for _, child in ipairs(stData.frame:GetChildren()) do
 					if child:IsA("Frame") or child:IsA("TextButton") then
 						child.BackgroundTransparency = 1
@@ -558,7 +585,6 @@ function NeronLib:CreateWindow(title, dragStiffness, dragDamping)
 			SideBtn.MouseButton1Click:Connect(function()
 				if Window._activeSideBtn == SideBtn then return end
 
-				-- Fade out all currently visible content items
 				local fadingFrames = {}
 				for _, t in ipairs(Window._tabs) do
 					for _, stName in ipairs(SUB_TABS) do
@@ -574,7 +600,6 @@ function NeronLib:CreateWindow(title, dragStiffness, dragDamping)
 					end
 				end
 
-				-- Sidebar button animates immediately
 				deselectCurrentSideBtn()
 				Window._activeSideBtn = SideBtn
 				Window._activeSideBtnNameLbl = NameLbl
@@ -585,11 +610,9 @@ function NeronLib:CreateWindow(title, dragStiffness, dragDamping)
 				Tween(IconLbl, {TextColor3 = C.ACCENT_DIM}, 0.15)
 				AccBar.Visible = true
 
-				-- Fade out title
 				Tween(TopTitle, {TextTransparency = 1}, 0.08)
 				Tween(TopDesc, {TextTransparency = 1}, 0.08)
 
-				-- After fade-out completes, swap content in
 				task.delay(0.14, function()
 					for _, f in ipairs(fadingFrames) do
 						f.Visible = false
@@ -616,25 +639,46 @@ function NeronLib:CreateWindow(title, dragStiffness, dragDamping)
 			end
 
 			------------------------------------------------------------
-			-- Tab:AddToggle
+			-- Tab:AddToggle  (now supports Keybind option)
+			-- Usage:
+			--   Tab:AddToggle(label, description, default, callback, subTab)
+			--   Tab:AddToggle(label, description, default, callback, subTab, keybindKey)
+			--   OR pass a table as the first argument:
+			--   Tab:AddToggle({ Text=, Desc=, Default=, Callback=, SubTab=, Keybind= })
 			------------------------------------------------------------
-			function Tab:AddToggle(label, description, default, callback, subTab)
+			function Tab:AddToggle(label, description, default, callback, subTab, keybindKey)
+				-- Table-style call support
+				if type(label) == "table" then
+					local t = label
+					label      = t.Text or t.Label or ""
+					description = t.Desc or t.Description or ""
+					default    = t.Default or false
+					callback   = t.Callback
+					subTab     = t.SubTab
+					keybindKey = t.Keybind -- Enum.KeyCode value or nil
+				end
+
 				local frame = getFrame(subTab)
 				if not frame then return end
 
 				local isOn = default or false
+				local boundKey = keybindKey or nil   -- Enum.KeyCode or nil
+				local listeningForKey = false
 
+				-- Row height: 49 normally, +26 when keybind slot is shown
+				local baseHeight = 49
 				local Row = Instance.new("Frame")
 				Row.BackgroundColor3 = C.ITEM
 				Row.BorderSizePixel = 0
-				Row.Size = UDim2.new(1, 0, 0, 49)
+				Row.Size = UDim2.new(1, 0, 0, baseHeight)
 				Row.ZIndex = 3
 				Row.Parent = frame
 				MakeCorner(Row, 4)
 
 				local LabelTxt = Instance.new("TextLabel")
 				LabelTxt.BackgroundTransparency = 1
-				LabelTxt.Size = UDim2.new(1, -60, 0, 22)
+				-- Leave right space for keybind chip + toggle
+				LabelTxt.Size = UDim2.new(1, -110, 0, 22)
 				LabelTxt.Position = UDim2.new(0, 16, 0, 6)
 				LabelTxt.Font = Enum.Font.GothamBold
 				LabelTxt.Text = label
@@ -647,7 +691,7 @@ function NeronLib:CreateWindow(title, dragStiffness, dragDamping)
 				if description and description ~= "" then
 					local DescTxt = Instance.new("TextLabel")
 					DescTxt.BackgroundTransparency = 1
-					DescTxt.Size = UDim2.new(1, -60, 0, 18)
+					DescTxt.Size = UDim2.new(1, -110, 0, 18)
 					DescTxt.Position = UDim2.new(0, 16, 0, 26)
 					DescTxt.Font = Enum.Font.Gotham
 					DescTxt.Text = description
@@ -659,6 +703,35 @@ function NeronLib:CreateWindow(title, dragStiffness, dragDamping)
 					DescTxt.Parent = Row
 				end
 
+				-- ── Keybind chip ──────────────────────────────────────────
+				local KeyChip = Instance.new("TextButton")
+				KeyChip.BackgroundColor3 = C.KEYBIND_BG
+				KeyChip.BorderSizePixel = 0
+				KeyChip.Size = UDim2.new(0, 46, 0, 18)
+				KeyChip.Position = UDim2.new(1, -104, 0.5, -9)
+				KeyChip.Font = Enum.Font.GothamBold
+				KeyChip.Text = boundKey and KeyName(boundKey) or "None"
+				KeyChip.TextColor3 = boundKey and C.KEYBIND_ACT or C.TEXT3
+				KeyChip.TextSize = 9
+				KeyChip.ZIndex = 5
+				KeyChip.Parent = Row
+				MakeCorner(KeyChip, 3)
+
+				-- small "kb" hint label above chip
+				local KbHint = Instance.new("TextLabel")
+				KbHint.BackgroundTransparency = 1
+				KbHint.Size = UDim2.new(0, 46, 0, 10)
+				KbHint.Position = UDim2.new(1, -104, 0, 3)
+				KbHint.Font = Enum.Font.Gotham
+				KbHint.Text = "BIND"
+				KbHint.TextColor3 = C.TEXT3
+				KbHint.TextSize = 7
+				KbHint.TextXAlignment = Enum.TextXAlignment.Center
+				KbHint.ZIndex = 5
+				KbHint.Visible = false   -- shown on hover
+				KbHint.Parent = Row
+
+				-- ── Toggle knob ───────────────────────────────────────────
 				local ToggleBG = Instance.new("Frame")
 				ToggleBG.BackgroundColor3 = C.TOG_BG
 				ToggleBG.BorderSizePixel = 0
@@ -703,6 +776,66 @@ function NeronLib:CreateWindow(title, dragStiffness, dragDamping)
 
 				Knob.MouseButton1Click:Connect(doToggle)
 
+				-- ── Keybind binding logic ─────────────────────────────────
+				local keyConn = nil
+
+				local function applyKey(kc)
+					boundKey = kc
+					if kc then
+						KeyChip.Text = KeyName(kc)
+						Tween(KeyChip, {TextColor3 = C.KEYBIND_ACT, BackgroundColor3 = Color3.fromRGB(28, 28, 40)}, 0.1)
+					else
+						KeyChip.Text = "None"
+						Tween(KeyChip, {TextColor3 = C.TEXT3, BackgroundColor3 = C.KEYBIND_BG}, 0.1)
+					end
+					-- Disconnect old listener if any
+					if keyConn then keyConn:Disconnect(); keyConn = nil end
+					if kc then
+						keyConn = UserInputService.InputBegan:Connect(function(input, gp)
+							if not gp and input.KeyCode == kc then
+								doToggle()
+							end
+						end)
+					end
+				end
+
+				-- Immediately wire default keybind if provided
+				if boundKey then applyKey(boundKey) end
+
+				-- Click chip to start listening
+				KeyChip.MouseButton1Click:Connect(function()
+					if listeningForKey then return end
+					listeningForKey = true
+					KeyChip.Text = "..."
+					Tween(KeyChip, {TextColor3 = C.TEXT1, BackgroundColor3 = Color3.fromRGB(35, 35, 55)}, 0.1)
+
+					-- Disconnect current key so it doesn't fire while we listen
+					if keyConn then keyConn:Disconnect(); keyConn = nil end
+
+					local listenConn
+					listenConn = UserInputService.InputBegan:Connect(function(input, gp)
+						if gp then return end
+						listeningForKey = false
+						listenConn:Disconnect()
+						if input.KeyCode == Enum.KeyCode.Escape then
+							-- Escape = unbind
+							applyKey(nil)
+						elseif input.UserInputType == Enum.UserInputType.Keyboard then
+							applyKey(input.KeyCode)
+						end
+					end)
+				end)
+
+				-- Hover hint
+				KeyChip.MouseEnter:Connect(function()
+					if not listeningForKey then
+						KbHint.Visible = true
+					end
+				end)
+				KeyChip.MouseLeave:Connect(function()
+					KbHint.Visible = false
+				end)
+
 				local ctrl = {}
 				function ctrl:Set(val)
 					isOn = val
@@ -710,6 +843,8 @@ function NeronLib:CreateWindow(title, dragStiffness, dragDamping)
 					if callback then callback(isOn) end
 				end
 				function ctrl:Get() return isOn end
+				function ctrl:SetKeybind(kc) applyKey(kc) end
+				function ctrl:GetKeybind() return boundKey end
 				return ctrl
 			end
 
@@ -784,21 +919,46 @@ function NeronLib:CreateWindow(title, dragStiffness, dragDamping)
 			end
 
 			------------------------------------------------------------
-			-- Tab:AddSlider
+			-- Tab:AddSlider  — now supports table-style + Rounding
+			-- Table-style:
+			--   Tab:AddSlider('id', {
+			--     Text = "My Slider",
+			--     Default = 0,
+			--     Min = 0,
+			--     Max = 5,
+			--     Rounding = 0.1,   -- decimal step; 1 = integers
+			--     Compact = false,
+			--     Callback = function(v) end
+			--   }, subTab)
+			-- Legacy positional style still works unchanged.
 			------------------------------------------------------------
 			function Tab:AddSlider(label, description, min, max, default, callback, subTab)
-				if type(description) == "number" then
-					subTab = callback
-					callback = default
-					default = max
-					max = min
-					min = description
+				-- Detect table-style call: Tab:AddSlider('id', { ... }, subTabStr)
+				local rounding = nil
+				if type(description) == "table" then
+					local t = description
+					subTab      = min   -- third arg is subTab in table style
+					label       = t.Text or t.Label or label
+					min         = t.Min or 0
+					max         = t.Max or 100
+					default     = t.Default or min
+					rounding    = t.Rounding  -- nil = integers
+					callback    = t.Callback
+					description = t.Desc or t.Description or nil
+				elseif type(description) == "number" then
+					-- legacy positional: AddSlider(label, min, max, default, callback, subTab)
+					subTab      = callback
+					callback    = default
+					default     = max
+					max         = min
+					min         = description
 					description = nil
 				end
+
 				local frame = getFrame(subTab)
 				if not frame then return end
 
-				local value = default or min
+				local value = RoundValue(default or min, min, max, rounding)
 
 				local Row = Instance.new("Frame")
 				Row.BackgroundColor3 = C.ITEM
@@ -825,7 +985,7 @@ function NeronLib:CreateWindow(title, dragStiffness, dragDamping)
 				ValueTxt.Size = UDim2.new(0, 50, 0, 20)
 				ValueTxt.Position = UDim2.new(1, -64, 0, 6)
 				ValueTxt.Font = Enum.Font.GothamBold
-				ValueTxt.Text = tostring(value)
+				ValueTxt.Text = FormatValue(value, rounding)
 				ValueTxt.TextColor3 = C.ACCENT_DIM
 				ValueTxt.TextSize = 12
 				ValueTxt.TextXAlignment = Enum.TextXAlignment.Right
@@ -854,10 +1014,12 @@ function NeronLib:CreateWindow(title, dragStiffness, dragDamping)
 				TrackBG.Parent = Row
 				MakeCorner(TrackBG, 2)
 
+				local initPct = (max ~= min) and ((value - min) / (max - min)) or 0
+
 				local Fill = Instance.new("Frame")
 				Fill.BackgroundColor3 = C.ACCENT
 				Fill.BorderSizePixel = 0
-				Fill.Size = UDim2.new((value - min) / (max - min), 0, 1, 0)
+				Fill.Size = UDim2.new(initPct, 0, 1, 0)
 				Fill.ZIndex = 5
 				Fill.Parent = TrackBG
 				MakeCorner(Fill, 2)
@@ -866,7 +1028,7 @@ function NeronLib:CreateWindow(title, dragStiffness, dragDamping)
 				SliderKnob.BackgroundColor3 = C.TEXT1
 				SliderKnob.BorderSizePixel = 0
 				SliderKnob.Size = UDim2.new(0, 12, 0, 12)
-				SliderKnob.Position = UDim2.new((value - min) / (max - min), -6, 0.5, -6)
+				SliderKnob.Position = UDim2.new(initPct, -6, 0.5, -6)
 				SliderKnob.Text = ""
 				SliderKnob.ZIndex = 6
 				SliderKnob.Parent = TrackBG
@@ -885,9 +1047,11 @@ function NeronLib:CreateWindow(title, dragStiffness, dragDamping)
 					if draggingSlider and input.UserInputType == Enum.UserInputType.MouseMovement then
 						local absPos = TrackBG.AbsolutePosition.X
 						local absSize = TrackBG.AbsoluteSize.X
-						local pct = math.clamp((input.Position.X - absPos) / absSize, 0, 1)
-						value = math.floor(min + (max - min) * pct + 0.5)
-						ValueTxt.Text = tostring(value)
+						local rawPct = math.clamp((input.Position.X - absPos) / absSize, 0, 1)
+						local rawVal = min + (max - min) * rawPct
+						value = RoundValue(rawVal, min, max, rounding)
+						local pct = (max ~= min) and ((value - min) / (max - min)) or 0
+						ValueTxt.Text = FormatValue(value, rounding)
 						Fill.Size = UDim2.new(pct, 0, 1, 0)
 						SliderKnob.Position = UDim2.new(pct, -6, 0.5, -6)
 						if callback then callback(value) end
@@ -896,9 +1060,9 @@ function NeronLib:CreateWindow(title, dragStiffness, dragDamping)
 
 				local ctrl = {}
 				function ctrl:Set(v)
-					value = math.clamp(v, min, max)
-					local pct = (value - min) / (max - min)
-					ValueTxt.Text = tostring(value)
+					value = RoundValue(v, min, max, rounding)
+					local pct = (max ~= min) and ((value - min) / (max - min)) or 0
+					ValueTxt.Text = FormatValue(value, rounding)
 					Fill.Size = UDim2.new(pct, 0, 1, 0)
 					SliderKnob.Position = UDim2.new(pct, -6, 0.5, -6)
 					if callback then callback(value) end
@@ -969,7 +1133,7 @@ function NeronLib:CreateWindow(title, dragStiffness, dragDamping)
 			end
 
 			------------------------------------------------------------
-			-- Tab:AddDropdown
+			-- Tab:AddDropdown  (single-select, unchanged)
 			------------------------------------------------------------
 			function Tab:AddDropdown(label, options, default, callback, subTab)
 				if type(default) == "function" then
@@ -1092,6 +1256,247 @@ function NeronLib:CreateWindow(title, dragStiffness, dragDamping)
 					if callback then callback(selected) end
 				end
 				function ctrl:Get() return selected end
+				return ctrl
+			end
+
+			------------------------------------------------------------
+			-- Tab:AddMultiDropdown  ← NEW
+			-- Allows selecting multiple options with checkmarks.
+			-- callback receives a table of currently selected options.
+			--
+			-- Usage:
+			--   Tab:AddMultiDropdown("label", {"A","B","C"}, {"A"}, callback, subTab)
+			--   or table style:
+			--   Tab:AddMultiDropdown({ Text=, Options=, Default=, Callback=, SubTab= })
+			------------------------------------------------------------
+			function Tab:AddMultiDropdown(label, options, default, callback, subTab)
+				-- Table-style support
+				if type(label) == "table" then
+					local t = label
+					label    = t.Text or t.Label or ""
+					options  = t.Options or {}
+					default  = t.Default or {}
+					callback = t.Callback
+					subTab   = t.SubTab
+				end
+
+				local frame = getFrame(subTab)
+				if not frame then return end
+
+				-- Build selected set from default table
+				local selectedSet = {}
+				if default then
+					for _, v in ipairs(default) do
+						selectedSet[v] = true
+					end
+				end
+
+				local open = false
+
+				-- Helper: build summary string
+				local function buildSummary()
+					local parts = {}
+					for _, opt in ipairs(options) do
+						if selectedSet[opt] then
+							table.insert(parts, opt)
+						end
+					end
+					if #parts == 0 then return "None" end
+					if #parts == #options then return "All" end
+					return table.concat(parts, ", ")
+				end
+
+				-- Helper: get selected as array
+				local function getSelected()
+					local arr = {}
+					for _, opt in ipairs(options) do
+						if selectedSet[opt] then
+							table.insert(arr, opt)
+						end
+					end
+					return arr
+				end
+
+				local Row = Instance.new("Frame")
+				Row.BackgroundColor3 = C.ITEM
+				Row.BorderSizePixel = 0
+				Row.Size = UDim2.new(1, 0, 0, 49)
+				Row.ClipsDescendants = false
+				Row.ZIndex = 10
+				Row.Parent = frame
+				MakeCorner(Row, 4)
+
+				local LabelTxt = Instance.new("TextLabel")
+				LabelTxt.BackgroundTransparency = 1
+				LabelTxt.Size = UDim2.new(1, -16, 0, 20)
+				LabelTxt.Position = UDim2.new(0, 16, 0, 6)
+				LabelTxt.Font = Enum.Font.GothamBold
+				LabelTxt.Text = label
+				LabelTxt.TextColor3 = C.TEXT1
+				LabelTxt.TextSize = 12
+				LabelTxt.TextXAlignment = Enum.TextXAlignment.Left
+				LabelTxt.ZIndex = 11
+				LabelTxt.Parent = Row
+
+				-- "Multi" badge
+				local MultiBadge = Instance.new("TextLabel")
+				MultiBadge.BackgroundColor3 = Color3.fromRGB(25, 25, 38)
+				MultiBadge.BackgroundTransparency = 0
+				MultiBadge.BorderSizePixel = 0
+				MultiBadge.Size = UDim2.new(0, 34, 0, 12)
+				MultiBadge.Position = UDim2.new(0, 16 + LabelTxt.TextSize * #label * 0.55 + 6, 0, 10)
+				MultiBadge.Font = Enum.Font.GothamBold
+				MultiBadge.Text = "MULTI"
+				MultiBadge.TextColor3 = C.ACCENT_DIM
+				MultiBadge.TextSize = 7
+				MultiBadge.ZIndex = 11
+				MultiBadge.Parent = Row
+				MakeCorner(MultiBadge, 3)
+
+				local DropBtn = Instance.new("TextButton")
+				DropBtn.BackgroundColor3 = C.INPUT_BG
+				DropBtn.BorderSizePixel = 0
+				DropBtn.Size = UDim2.new(1, -32, 0, 22)
+				DropBtn.Position = UDim2.new(0, 16, 0, 22)
+				DropBtn.Font = Enum.Font.Gotham
+				DropBtn.Text = buildSummary()
+				DropBtn.TextColor3 = C.TEXT2
+				DropBtn.TextSize = 11
+				DropBtn.TextXAlignment = Enum.TextXAlignment.Left
+				DropBtn.TextTruncate = Enum.TextTruncate.AtEnd
+				DropBtn.ZIndex = 11
+				DropBtn.Parent = Row
+				MakeCorner(DropBtn, 4)
+				MakePadding(DropBtn, 0, 0, 8, 28)  -- right padding for arrow
+
+				local DropArrow = Instance.new("TextLabel")
+				DropArrow.BackgroundTransparency = 1
+				DropArrow.Size = UDim2.new(0, 20, 1, 0)
+				DropArrow.Position = UDim2.new(1, -22, 0, 0)
+				DropArrow.Font = Enum.Font.GothamBold
+				DropArrow.Text = "▾"
+				DropArrow.TextColor3 = C.TEXT3
+				DropArrow.TextSize = 12
+				DropArrow.ZIndex = 12
+				DropArrow.Parent = DropBtn
+
+				-- Each option row = 26px; +8 for top/bottom padding
+				local listH = #options * 28 + 8
+				local DropList = Instance.new("Frame")
+				DropList.BackgroundColor3 = C.DROPDOWN_BG
+				DropList.BorderSizePixel = 0
+				DropList.Size = UDim2.new(1, -32, 0, listH)
+				DropList.Position = UDim2.new(0, 16, 0, 47)
+				DropList.Visible = false
+				DropList.ZIndex = 20
+				DropList.Parent = Row
+				MakeCorner(DropList, 4)
+				MakePadding(DropList, 4, 4, 4, 4)
+				MakeList(DropList, 2)
+
+				-- Store opt button refs for refresh
+				local optBtns = {}
+
+				local function refreshOptColors()
+					for _, info in ipairs(optBtns) do
+						local isSelected = selectedSet[info.opt]
+						Tween(info.check, {
+							BackgroundColor3 = isSelected and C.ACCENT or Color3.fromRGB(28,28,38),
+							BackgroundTransparency = isSelected and 0 or 0
+						}, 0.1)
+						info.checkMark.Visible = isSelected
+						Tween(info.lbl, {TextColor3 = isSelected and C.TEXT1 or C.TEXT2}, 0.1)
+					end
+				end
+
+				for _, opt in ipairs(options) do
+					local OptRow = Instance.new("TextButton")
+					OptRow.BackgroundColor3 = C.DROPDOWN_BG
+					OptRow.BackgroundTransparency = 1
+					OptRow.BorderSizePixel = 0
+					OptRow.Size = UDim2.new(1, 0, 0, 24)
+					OptRow.Font = Enum.Font.Gotham
+					OptRow.Text = ""
+					OptRow.ZIndex = 21
+					OptRow.Parent = DropList
+					MakeCorner(OptRow, 3)
+
+					-- Checkbox square
+					local CheckBox = Instance.new("Frame")
+					CheckBox.BackgroundColor3 = selectedSet[opt] and C.ACCENT or Color3.fromRGB(28, 28, 38)
+					CheckBox.BorderSizePixel = 0
+					CheckBox.Size = UDim2.new(0, 14, 0, 14)
+					CheckBox.Position = UDim2.new(0, 6, 0.5, -7)
+					CheckBox.ZIndex = 22
+					CheckBox.Parent = OptRow
+					MakeCorner(CheckBox, 3)
+
+					-- Check mark "✓"
+					local CheckMark = Instance.new("TextLabel")
+					CheckMark.BackgroundTransparency = 1
+					CheckMark.Size = UDim2.new(1, 0, 1, 0)
+					CheckMark.Font = Enum.Font.GothamBold
+					CheckMark.Text = "✓"
+					CheckMark.TextColor3 = C.TEXT1
+					CheckMark.TextSize = 9
+					CheckMark.Visible = selectedSet[opt] or false
+					CheckMark.ZIndex = 23
+					CheckMark.Parent = CheckBox
+
+					local OptLbl = Instance.new("TextLabel")
+					OptLbl.BackgroundTransparency = 1
+					OptLbl.Size = UDim2.new(1, -30, 1, 0)
+					OptLbl.Position = UDim2.new(0, 26, 0, 0)
+					OptLbl.Font = Enum.Font.Gotham
+					OptLbl.Text = opt
+					OptLbl.TextColor3 = selectedSet[opt] and C.TEXT1 or C.TEXT2
+					OptLbl.TextSize = 11
+					OptLbl.TextXAlignment = Enum.TextXAlignment.Left
+					OptLbl.ZIndex = 22
+					OptLbl.Parent = OptRow
+
+					table.insert(optBtns, {opt = opt, check = CheckBox, checkMark = CheckMark, lbl = OptLbl})
+
+					OptRow.MouseEnter:Connect(function()
+						Tween(OptRow, {BackgroundTransparency = 0.75}, 0.1)
+					end)
+					OptRow.MouseLeave:Connect(function()
+						Tween(OptRow, {BackgroundTransparency = 1}, 0.1)
+					end)
+					OptRow.MouseButton1Click:Connect(function()
+						selectedSet[opt] = not selectedSet[opt]
+						refreshOptColors()
+						DropBtn.Text = buildSummary()
+						if callback then callback(getSelected()) end
+					end)
+				end
+
+				DropBtn.MouseButton1Click:Connect(function()
+					open = not open
+					DropList.Visible = open
+					Tween(DropArrow, {Rotation = open and 180 or 0}, 0.15)
+				end)
+
+				local ctrl = {}
+				-- Set accepts a table of selected option strings
+				function ctrl:Set(arr)
+					selectedSet = {}
+					for _, v in ipairs(arr) do
+						selectedSet[v] = true
+					end
+					refreshOptColors()
+					DropBtn.Text = buildSummary()
+					if callback then callback(getSelected()) end
+				end
+				-- Get returns array of selected strings
+				function ctrl:Get() return getSelected() end
+				-- Toggle a single option
+				function ctrl:Toggle(opt)
+					selectedSet[opt] = not selectedSet[opt]
+					refreshOptColors()
+					DropBtn.Text = buildSummary()
+					if callback then callback(getSelected()) end
+				end
 				return ctrl
 			end
 
