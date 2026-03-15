@@ -426,8 +426,8 @@ function NeronLib:CreateWindow(title)
 			-- Deselect previous tab
 			if Window._activeSidebarBtn then
 				Tween(Window._activeSidebarBtn, {BackgroundTransparency = 1, TextColor3 = C.TEXT_DIM}, 0.15)
-				Window._activeSidebarBtn:FindFirstChild("AccentBar") and
-					(Window._activeSidebarBtn.AccentBar.Visible = false)
+                local oldAccent = Window._activeSidebarBtn:FindFirstChild("AccentBar")
+                if oldAccent then oldAccent.Visible = false end
 				-- hide old accent bar
 				for _, c in ipairs(Window._activeSidebarBtn:GetChildren()) do
 					if c:IsA("Frame") then c.Visible = false end
@@ -1063,7 +1063,7 @@ function NeronLib:CreateWindow(title)
 		end
 	end)
 
-	return Window
+    return Window
 end
 
-return NeronLib
+return NeronLib  -- ← file ends here, nothing after this
