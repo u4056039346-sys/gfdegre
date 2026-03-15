@@ -86,7 +86,7 @@ function NeronLib:CreateWindow(title)
 	-- Dragging
 	local dragging, dragStart, startPos
 	local targetPos = Main.Position
-	local lerpSpeed = 0.18 -- lower = smoother/slower, higher = snappier
+	local lerpSpeed = 0.10 -- lower = smoother/slower, higher = snappier
 
 	Main.InputBegan:Connect(function(input)
 		if input.UserInputType == Enum.UserInputType.MouseButton1 then
