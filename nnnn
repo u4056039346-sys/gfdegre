@@ -312,8 +312,12 @@ function NeronLib:CreateWindow(title)
 	local function hideAllTabContent()
 		for _, tab in ipairs(Window._tabs) do
 			for _, stName in ipairs(SUB_TABS) do
-				if tab._subTabs[stName] then
-					tab._subTabs[stName].frame.Visible = false
+				local st = tab._subTabs[stName]
+				if st and st.frame.Visible then
+					st.frame.Visible = false
+					if st.pad then
+						st.pad.PaddingTop = UDim.new(0, 0)
+					end
 				end
 			end
 			tab._activeST = nil
@@ -378,7 +382,11 @@ function NeronLib:CreateWindow(title)
 				F.ZIndex = 3
 				F.Parent = Content
 				MakeList(F, 4)
-				Tab._subTabs[stName] = {frame = F, btn = nil, underline = nil}
+				-- UIPadding used to animate a slide-in offset
+				local FPad = Instance.new("UIPadding")
+				FPad.PaddingTop = UDim.new(0, 0)
+				FPad.Parent = F
+				Tab._subTabs[stName] = {frame = F, pad = FPad, btn = nil, underline = nil}
 			end
 
 			-- Sidebar button parented to CatContainer (not SideScroll)
@@ -495,13 +503,32 @@ function NeronLib:CreateWindow(title)
 				if Tab._activeST and Tab._subTabs[Tab._activeST] then
 					Tab._subTabs[Tab._activeST].underline.Visible = false
 					Tab._subTabs[Tab._activeST].frame.Visible = false
+					if Tab._subTabs[Tab._activeST].pad then
+						Tab._subTabs[Tab._activeST].pad.PaddingTop = UDim.new(0, 0)
+					end
 				end
 
 				Tab._activeST = stName
 				Tab._activeSTBtn = stData.btn
 				Tween(stData.btn, {TextColor3 = C.TEXT1}, 0.1)
 				stData.underline.Visible = true
+
+				-- Slide + fade in the new frame
+				if stData.pad then
+					stData.pad.PaddingTop = UDim.new(0, 10)
+				end
 				stData.frame.Visible = true
+				-- animate children transparency fade-in
+				for _, child in ipairs(stData.frame:GetChildren()) do
+					if child:IsA("Frame") or child:IsA("TextButton") then
+						child.BackgroundTransparency = 1
+						Tween(child, {BackgroundTransparency = 0}, 0.18)
+					end
+				end
+				if stData.pad then
+					local ti = TweenInfo.new(0.18, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+					TweenService:Create(stData.pad, ti, {PaddingTop = UDim.new(0, 0)}):Play()
+				end
 			end
 
 			SideBtn.MouseButton1Click:Connect(function()
@@ -520,8 +547,15 @@ function NeronLib:CreateWindow(title)
 				Tween(IconLbl, {TextColor3 = C.ACCENT_DIM}, 0.15)
 				AccBar.Visible = true
 
-				TopTitle.Text = name
-				TopDesc.Text = Tab._desc
+				-- Animate top bar title fade
+				Tween(TopTitle, {TextTransparency = 1}, 0.08)
+				Tween(TopDesc, {TextTransparency = 1}, 0.08)
+				task.delay(0.09, function()
+					TopTitle.Text = name
+					TopDesc.Text = Tab._desc
+					Tween(TopTitle, {TextTransparency = 0}, 0.15)
+					Tween(TopDesc, {TextTransparency = 0}, 0.15)
+				end)
 
 				buildSubTabBtns()
 
