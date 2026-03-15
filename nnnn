@@ -85,28 +85,26 @@ function NeronLib:CreateWindow(title, dragStiffness, dragDamping)
 
 	-- Dragging
 	local dragging = false
-	-- offset from top-left of window to where user clicked
 	local grabOffsetX, grabOffsetY = 0, 0
-	-- target position the spring chases (mouse minus grab offset)
 	local targetX, targetY = 0, 0
-	-- spring velocity
 	local velX, velY = 0, 0
+	local hasMoved = false
 
 	Main.InputBegan:Connect(function(input)
 		if input.UserInputType == Enum.UserInputType.MouseButton1 then
 			dragging = true
-			-- record where on the window the user clicked
+			hasMoved = false
 			grabOffsetX = input.Position.X - Main.AbsolutePosition.X
 			grabOffsetY = input.Position.Y - Main.AbsolutePosition.Y
-			-- initialise target to current position so spring starts at rest
-			targetX = Main.Position.X.Offset
-			targetY = Main.Position.Y.Offset
+			-- start target exactly where window already is
+			targetX = Main.AbsolutePosition.X
+			targetY = Main.AbsolutePosition.Y
 			velX, velY = 0, 0
 		end
 	end)
 	UserInputService.InputChanged:Connect(function(input)
 		if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
-			-- target = mouse position minus the grab offset
+			hasMoved = true
 			targetX = input.Position.X - grabOffsetX
 			targetY = input.Position.Y - grabOffsetY
 		end
@@ -117,20 +115,19 @@ function NeronLib:CreateWindow(title, dragStiffness, dragDamping)
 		end
 	end)
 
-	-- Spring-based smooth follow
 	local STIFFNESS = dragStiffness or 120
 	local DAMPING   = dragDamping   or 14
 	game:GetService("RunService").RenderStepped:Connect(function(dt)
-		if not dragging then return end
-		local curX = Main.Position.X.Offset
-		local curY = Main.Position.Y.Offset
+		if not dragging or not hasMoved then return end
+		local curX = Main.AbsolutePosition.X
+		local curY = Main.AbsolutePosition.Y
 		local forceX = (targetX - curX) * STIFFNESS - velX * DAMPING
 		local forceY = (targetY - curY) * STIFFNESS - velY * DAMPING
 		velX = velX + forceX * dt
 		velY = velY + forceY * dt
 		Main.Position = UDim2.new(
-			Main.Position.X.Scale, curX + velX * dt,
-			Main.Position.Y.Scale, curY + velY * dt
+			0, curX + velX * dt,
+			0, curY + velY * dt
 		)
 	end)
 
