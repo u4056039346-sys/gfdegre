@@ -83,53 +83,67 @@ function NeronLib:CreateWindow(title, dragStiffness, dragDamping)
 	Main.Parent = Gui
 	MakeCorner(Main, 10)
 
-	-- Dragging
-	local dragging = false
-	local grabOffsetX, grabOffsetY = 0, 0
-	local targetX, targetY = 0, 0
-	local velX, velY = 0, 0
-	local hasMoved = false
+-- Smooth TopBar Dragging
+local RunService = game:GetService("RunService")
 
-	Main.InputBegan:Connect(function(input)
-		if input.UserInputType == Enum.UserInputType.MouseButton1 then
-			dragging = true
-			hasMoved = false
-			grabOffsetX = input.Position.X - Main.AbsolutePosition.X
-			grabOffsetY = input.Position.Y - Main.AbsolutePosition.Y
-			-- start target exactly where window already is
-			targetX = Main.AbsolutePosition.X
-			targetY = Main.AbsolutePosition.Y
-			velX, velY = 0, 0
-		end
-	end)
-	UserInputService.InputChanged:Connect(function(input)
-		if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
-			hasMoved = true
-			targetX = input.Position.X - grabOffsetX
-			targetY = input.Position.Y - grabOffsetY
-		end
-	end)
-	UserInputService.InputEnded:Connect(function(input)
-		if input.UserInputType == Enum.UserInputType.MouseButton1 then
-			dragging = false
-		end
-	end)
+local dragging = false
+local dragStart
+local startPos
 
-	local STIFFNESS = dragStiffness or 120
-	local DAMPING   = dragDamping   or 14
-	game:GetService("RunService").RenderStepped:Connect(function(dt)
-		if not dragging or not hasMoved then return end
-		local curX = Main.AbsolutePosition.X
-		local curY = Main.AbsolutePosition.Y
-		local forceX = (targetX - curX) * STIFFNESS - velX * DAMPING
-		local forceY = (targetY - curY) * STIFFNESS - velY * DAMPING
-		velX = velX + forceX * dt
-		velY = velY + forceY * dt
-		Main.Position = UDim2.new(
-			0, curX + velX * dt,
-			0, curY + velY * dt
-		)
-	end)
+local targetX
+local targetY
+local velX = 0
+local velY = 0
+
+local STIFFNESS = dragStiffness or 120
+local DAMPING = dragDamping or 14
+
+TopBar.InputBegan:Connect(function(input)
+	if input.UserInputType == Enum.UserInputType.MouseButton1 then
+		dragging = true
+		dragStart = input.Position
+		startPos = Main.Position
+
+		targetX = startPos.X.Offset
+		targetY = startPos.Y.Offset
+
+		velX = 0
+		velY = 0
+	end
+end)
+
+UserInputService.InputChanged:Connect(function(input)
+	if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
+		local delta = input.Position - dragStart
+
+		targetX = startPos.X.Offset + delta.X
+		targetY = startPos.Y.Offset + delta.Y
+	end
+end)
+
+UserInputService.InputEnded:Connect(function(input)
+	if input.UserInputType == Enum.UserInputType.MouseButton1 then
+		dragging = false
+	end
+end)
+
+RunService.RenderStepped:Connect(function(dt)
+	local curX = Main.Position.X.Offset
+	local curY = Main.Position.Y.Offset
+
+	local forceX = (targetX - curX) * STIFFNESS - velX * DAMPING
+	local forceY = (targetY - curY) * STIFFNESS - velY * DAMPING
+
+	velX += forceX * dt
+	velY += forceY * dt
+
+	Main.Position = UDim2.new(
+		Main.Position.X.Scale,
+		curX + velX * dt,
+		Main.Position.Y.Scale,
+		curY + velY * dt
+	)
+end)
 
 	-- Sidebar background
 	local Sidebar = Instance.new("Frame")
