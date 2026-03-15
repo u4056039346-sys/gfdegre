@@ -662,7 +662,8 @@ function NeronLib:CreateWindow(title, dragStiffness, dragDamping)
 				if not frame then return end
 
 				local isOn = default or false
-				local boundKey = keybindKey or nil   -- Enum.KeyCode or nil
+				local hasKeybind = keybindKey ~= nil
+				local boundKey = keybindKey
 				local listeningForKey = false
 
 				-- Row height: 49 normally, +26 when keybind slot is shown
@@ -678,7 +679,7 @@ function NeronLib:CreateWindow(title, dragStiffness, dragDamping)
 				local LabelTxt = Instance.new("TextLabel")
 				LabelTxt.BackgroundTransparency = 1
 				-- Leave right space for keybind chip + toggle
-				LabelTxt.Size = UDim2.new(1, -110, 0, 22)
+				LabelTxt.Size = hasKeybind and UDim2.new(1, -110, 0, 22) or UDim2.new(1, -70, 0, 22)
 				LabelTxt.Position = UDim2.new(0, 16, 0, 6)
 				LabelTxt.Font = Enum.Font.GothamBold
 				LabelTxt.Text = label
@@ -703,138 +704,117 @@ function NeronLib:CreateWindow(title, dragStiffness, dragDamping)
 					DescTxt.Parent = Row
 				end
 
-				-- ── Keybind chip ──────────────────────────────────────────
-				local KeyChip = Instance.new("TextButton")
-				KeyChip.BackgroundColor3 = C.KEYBIND_BG
-				KeyChip.BorderSizePixel = 0
-				KeyChip.Size = UDim2.new(0, 46, 0, 18)
-				KeyChip.Position = UDim2.new(1, -104, 0.5, -9)
-				KeyChip.Font = Enum.Font.GothamBold
-				KeyChip.Text = boundKey and KeyName(boundKey) or "None"
-				KeyChip.TextColor3 = boundKey and C.KEYBIND_ACT or C.TEXT3
-				KeyChip.TextSize = 9
-				KeyChip.ZIndex = 5
-				KeyChip.Parent = Row
-				MakeCorner(KeyChip, 3)
+if hasKeybind then
 
-				-- small "kb" hint label above chip
-				local KbHint = Instance.new("TextLabel")
-				KbHint.BackgroundTransparency = 1
-				KbHint.Size = UDim2.new(0, 46, 0, 10)
-				KbHint.Position = UDim2.new(1, -104, 0, 3)
-				KbHint.Font = Enum.Font.Gotham
-				KbHint.Text = "BIND"
-				KbHint.TextColor3 = C.TEXT3
-				KbHint.TextSize = 7
-				KbHint.TextXAlignment = Enum.TextXAlignment.Center
-				KbHint.ZIndex = 5
-				KbHint.Visible = false   -- shown on hover
-				KbHint.Parent = Row
+	-- ── Keybind chip ──────────────────────────────────────────
+	local KeyChip = Instance.new("TextButton")
+	KeyChip.BackgroundColor3 = C.KEYBIND_BG
+	KeyChip.BorderSizePixel = 0
+	KeyChip.Size = UDim2.new(0, 46, 0, 18)
+	KeyChip.Position = UDim2.new(1, -104, 0.5, -9)
+	KeyChip.Font = Enum.Font.GothamBold
+	KeyChip.Text = boundKey and KeyName(boundKey) or "None"
+	KeyChip.TextColor3 = boundKey and C.KEYBIND_ACT or C.TEXT3
+	KeyChip.TextSize = 9
+	KeyChip.ZIndex = 5
+	KeyChip.Parent = Row
+	MakeCorner(KeyChip, 3)
 
-				-- ── Toggle knob ───────────────────────────────────────────
-				local ToggleBG = Instance.new("Frame")
-				ToggleBG.BackgroundColor3 = C.TOG_BG
-				ToggleBG.BorderSizePixel = 0
-				ToggleBG.Size = UDim2.new(0, 38, 0, 20)
-				ToggleBG.Position = UDim2.new(1, -54, 0.5, -10)
-				ToggleBG.ZIndex = 4
-				ToggleBG.Parent = Row
-				MakeCorner(ToggleBG, 10)
+	-- small "bind" hint label
+	local KbHint = Instance.new("TextLabel")
+	KbHint.BackgroundTransparency = 1
+	KbHint.Size = UDim2.new(0, 46, 0, 10)
+	KbHint.Position = UDim2.new(1, -104, 0, 3)
+	KbHint.Font = Enum.Font.Gotham
+	KbHint.Text = "BIND"
+	KbHint.TextColor3 = C.TEXT3
+	KbHint.TextSize = 7
+	KbHint.TextXAlignment = Enum.TextXAlignment.Center
+	KbHint.ZIndex = 5
+	KbHint.Visible = false
+	KbHint.Parent = Row
 
-				local Knob = Instance.new("TextButton")
-				Knob.BackgroundColor3 = isOn and C.TOG_ON or C.TOG_OFF
-				Knob.BorderSizePixel = 0
-				Knob.Size = UDim2.new(0, 16, 0, 16)
-				Knob.Position = isOn and UDim2.new(0, 18, 0.5, -8) or UDim2.new(1, -34, 0.5, -8)
-				Knob.Text = ""
-				Knob.ZIndex = 5
-				Knob.Parent = ToggleBG
-				MakeCorner(Knob, 8)
+	-- ── Keybind binding logic ─────────────────────────────────
+	local keyConn = nil
 
-				local Dot = Instance.new("Frame")
-				Dot.BackgroundColor3 = C.TOG_BG
-				Dot.BorderSizePixel = 0
-				Dot.Size = UDim2.new(0, 8, 0, 8)
-				Dot.Position = UDim2.new(0.5, -4, 0.5, -4)
-				Dot.ZIndex = 6
-				Dot.Parent = Knob
-				MakeCorner(Dot, 4)
+	local function applyKey(kc)
+		boundKey = kc
 
-				local function updateToggle()
-					if isOn then
-						Tween(Knob, {Position = UDim2.new(0, 18, 0.5, -8), BackgroundColor3 = C.TOG_ON}, 0.2)
-					else
-						Tween(Knob, {Position = UDim2.new(1, -34, 0.5, -8), BackgroundColor3 = C.TOG_OFF}, 0.2)
-					end
+		if kc then
+			KeyChip.Text = KeyName(kc)
+			Tween(KeyChip, {
+				TextColor3 = C.KEYBIND_ACT,
+				BackgroundColor3 = Color3.fromRGB(28,28,40)
+			}, 0.1)
+		else
+			KeyChip.Text = "None"
+			Tween(KeyChip, {
+				TextColor3 = C.TEXT3,
+				BackgroundColor3 = C.KEYBIND_BG
+			}, 0.1)
+		end
+
+		if keyConn then
+			keyConn:Disconnect()
+			keyConn = nil
+		end
+
+		if kc then
+			keyConn = UserInputService.InputBegan:Connect(function(input, gp)
+				if not gp and input.KeyCode == kc then
+					doToggle()
 				end
+			end)
+		end
+	end
 
-				local function doToggle()
-					isOn = not isOn
-					updateToggle()
-					if callback then callback(isOn) end
-				end
+	-- apply default key
+	if boundKey then
+		applyKey(boundKey)
+	end
 
-				Knob.MouseButton1Click:Connect(doToggle)
+	-- click to bind
+	KeyChip.MouseButton1Click:Connect(function()
+		if listeningForKey then return end
 
-				-- ── Keybind binding logic ─────────────────────────────────
-				local keyConn = nil
+		listeningForKey = true
+		KeyChip.Text = "..."
+		Tween(KeyChip, {
+			TextColor3 = C.TEXT1,
+			BackgroundColor3 = Color3.fromRGB(35,35,55)
+		}, 0.1)
 
-				local function applyKey(kc)
-					boundKey = kc
-					if kc then
-						KeyChip.Text = KeyName(kc)
-						Tween(KeyChip, {TextColor3 = C.KEYBIND_ACT, BackgroundColor3 = Color3.fromRGB(28, 28, 40)}, 0.1)
-					else
-						KeyChip.Text = "None"
-						Tween(KeyChip, {TextColor3 = C.TEXT3, BackgroundColor3 = C.KEYBIND_BG}, 0.1)
-					end
-					-- Disconnect old listener if any
-					if keyConn then keyConn:Disconnect(); keyConn = nil end
-					if kc then
-						keyConn = UserInputService.InputBegan:Connect(function(input, gp)
-							if not gp and input.KeyCode == kc then
-								doToggle()
-							end
-						end)
-					end
-				end
+		if keyConn then
+			keyConn:Disconnect()
+			keyConn = nil
+		end
 
-				-- Immediately wire default keybind if provided
-				if boundKey then applyKey(boundKey) end
+		local listenConn
+		listenConn = UserInputService.InputBegan:Connect(function(input, gp)
+			if gp then return end
 
-				-- Click chip to start listening
-				KeyChip.MouseButton1Click:Connect(function()
-					if listeningForKey then return end
-					listeningForKey = true
-					KeyChip.Text = "..."
-					Tween(KeyChip, {TextColor3 = C.TEXT1, BackgroundColor3 = Color3.fromRGB(35, 35, 55)}, 0.1)
+			listeningForKey = false
+			listenConn:Disconnect()
 
-					-- Disconnect current key so it doesn't fire while we listen
-					if keyConn then keyConn:Disconnect(); keyConn = nil end
+			if input.KeyCode == Enum.KeyCode.Escape then
+				applyKey(nil)
+			elseif input.UserInputType == Enum.UserInputType.Keyboard then
+				applyKey(input.KeyCode)
+			end
+		end)
+	end)
 
-					local listenConn
-					listenConn = UserInputService.InputBegan:Connect(function(input, gp)
-						if gp then return end
-						listeningForKey = false
-						listenConn:Disconnect()
-						if input.KeyCode == Enum.KeyCode.Escape then
-							-- Escape = unbind
-							applyKey(nil)
-						elseif input.UserInputType == Enum.UserInputType.Keyboard then
-							applyKey(input.KeyCode)
-						end
-					end)
-				end)
+	KeyChip.MouseEnter:Connect(function()
+		if not listeningForKey then
+			KbHint.Visible = true
+		end
+	end)
 
-				-- Hover hint
-				KeyChip.MouseEnter:Connect(function()
-					if not listeningForKey then
-						KbHint.Visible = true
-					end
-				end)
-				KeyChip.MouseLeave:Connect(function()
-					KbHint.Visible = false
-				end)
+	KeyChip.MouseLeave:Connect(function()
+		KbHint.Visible = false
+	end)
+
+end
 
 				local ctrl = {}
 				function ctrl:Set(val)
