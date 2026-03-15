@@ -738,7 +738,7 @@ local ToggleBG = Instance.new("Frame")
 ToggleBG.BackgroundColor3 = C.TOG_BG
 ToggleBG.BorderSizePixel = 0
 ToggleBG.Size = UDim2.new(0, 38, 0, 20)
-ToggleBG.Position = boundKey and UDim2.new(1, -54, 0.5, -10) or UDim2.new(1, -10, 0.5, -10)
+ToggleBG.Position = boundKey and UDim2.new(1, -58, 0.5, -10) or UDim2.new(1, -20, 0.5, -10)
 ToggleBG.ZIndex = 4
 ToggleBG.Parent = Row
 MakeCorner(ToggleBG, 10)
@@ -787,12 +787,12 @@ local function applyKey(kc)
         KeyChip.Visible = true
         KeyChip.Text = KeyName(kc)
         Tween(KeyChip, {TextColor3 = C.KEYBIND_ACT, BackgroundColor3 = Color3.fromRGB(28, 28, 40)}, 0.1)
-        Tween(ToggleBG, {Position = UDim2.new(1, -54, 0.5, -10)}, 0.1)   -- ← pushed left for chip
+        Tween(ToggleBG, {Position = UDim2.new(1, -58, 0.5, -10)}, 0.1)  -- bound
     else
         KeyChip.Visible = false
         KeyChip.Text = "None"
         Tween(KeyChip, {TextColor3 = C.TEXT3, BackgroundColor3 = C.KEYBIND_BG}, 0.1)
-        Tween(ToggleBG, {Position = UDim2.new(1, -10, 0.5, -10)}, 0.1)   -- ← pulled right, no chip
+        Tween(ToggleBG, {Position = UDim2.new(1, -20, 0.5, -10)}, 0.1)  -- unbound
     end
     if keyConn then keyConn:Disconnect(); keyConn = nil end
     if kc then
