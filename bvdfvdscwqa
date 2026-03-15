@@ -734,14 +734,14 @@ MakeCorner(KeyChip, 3)
 				KbHint.Parent = Row
 
 				-- ── Toggle knob ───────────────────────────────────────────
-				local ToggleBG = Instance.new("Frame")
-				ToggleBG.BackgroundColor3 = C.TOG_BG
-				ToggleBG.BorderSizePixel = 0
-				ToggleBG.Size = UDim2.new(0, 38, 0, 20)
-				ToggleBG.Position = UDim2.new(1, -54, 0.5, -10)
-				ToggleBG.ZIndex = 4
-				ToggleBG.Parent = Row
-				MakeCorner(ToggleBG, 10)
+local ToggleBG = Instance.new("Frame")
+ToggleBG.BackgroundColor3 = C.TOG_BG
+ToggleBG.BorderSizePixel = 0
+ToggleBG.Size = UDim2.new(0, 38, 0, 20)
+ToggleBG.Position = boundKey and UDim2.new(1, -54, 0.5, -10) or UDim2.new(1, -10, 0.5, -10)
+ToggleBG.ZIndex = 4
+ToggleBG.Parent = Row
+MakeCorner(ToggleBG, 10)
 
 				local Knob = Instance.new("TextButton")
 				Knob.BackgroundColor3 = isOn and C.TOG_ON or C.TOG_OFF
@@ -784,20 +784,20 @@ MakeCorner(KeyChip, 3)
 local function applyKey(kc)
     boundKey = kc
     if kc then
+        KeyChip.Visible = true
         KeyChip.Text = KeyName(kc)
-        KeyChip.Visible = true  -- ← ADD THIS LINE
         Tween(KeyChip, {TextColor3 = C.KEYBIND_ACT, BackgroundColor3 = Color3.fromRGB(28, 28, 40)}, 0.1)
+        Tween(ToggleBG, {Position = UDim2.new(1, -54, 0.5, -10)}, 0.1)   -- ← pushed left for chip
     else
+        KeyChip.Visible = false
         KeyChip.Text = "None"
-        KeyChip.Visible = false  -- ← ADD THIS LINE
         Tween(KeyChip, {TextColor3 = C.TEXT3, BackgroundColor3 = C.KEYBIND_BG}, 0.1)
+        Tween(ToggleBG, {Position = UDim2.new(1, -10, 0.5, -10)}, 0.1)   -- ← pulled right, no chip
     end
     if keyConn then keyConn:Disconnect(); keyConn = nil end
     if kc then
         keyConn = UserInputService.InputBegan:Connect(function(input, gp)
-            if not gp and input.KeyCode == kc then
-                doToggle()
-            end
+            if not gp and input.KeyCode == kc then doToggle() end
         end)
     end
 end
