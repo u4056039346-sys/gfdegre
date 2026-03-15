@@ -224,7 +224,7 @@ function NeronLib:CreateWindow(title, dragStiffness, dragDamping)
 	local LogoSub = Instance.new("TextLabel")
 	LogoSub.BackgroundTransparency = 1
 	LogoSub.Size = UDim2.new(0, 40, 0, 22)
-	LogoSub.Position = UDim2.new(0, 106, 0.5, -11)
+	LogoSub.Position = UDim2.new(0, 106, 0.5, -22)
 	LogoSub.Font = Enum.Font.GothamBold
 	LogoSub.Text = "CORP."
 	LogoSub.TextColor3 = C.TEXT3
