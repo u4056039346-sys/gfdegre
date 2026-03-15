@@ -58,7 +58,7 @@ local C = {
 
 local SUB_TABS = {"General", "Additional", "Misc"}
 
-function NeronLib:CreateWindow(title)
+function NeronLib:CreateWindow(title, dragStiffness, dragDamping)
 	local Window = {}
 	Window._tabs = {}
 	Window._activeSideBtn = nil
@@ -117,8 +117,8 @@ function NeronLib:CreateWindow(title)
 	end)
 
 	-- Spring-based smooth follow
-	local STIFFNESS = 120  -- how strongly it pulls toward target
-	local DAMPING   = 14   -- how quickly oscillation dies (raise to reduce bounce)
+	local STIFFNESS = dragStiffness or 120  -- how strongly it pulls toward target
+	local DAMPING   = dragDamping   or 14   -- how quickly oscillation dies (raise to reduce bounce)
 	game:GetService("RunService").RenderStepped:Connect(function(dt)
 		if not dragging then return end
 		local curX = Main.Position.X.Offset
