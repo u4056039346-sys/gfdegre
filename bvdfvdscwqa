@@ -704,18 +704,20 @@ function NeronLib:CreateWindow(title, dragStiffness, dragDamping)
 				end
 
 				-- ── Keybind chip ──────────────────────────────────────────
-				local KeyChip = Instance.new("TextButton")
-				KeyChip.BackgroundColor3 = C.KEYBIND_BG
-				KeyChip.BorderSizePixel = 0
-				KeyChip.Size = UDim2.new(0, 46, 0, 18)
-				KeyChip.Position = UDim2.new(1, -104, 0.5, -9)
-				KeyChip.Font = Enum.Font.GothamBold
-				KeyChip.Text = boundKey and KeyName(boundKey) or "None"
-				KeyChip.TextColor3 = boundKey and C.KEYBIND_ACT or C.TEXT3
-				KeyChip.TextSize = 9
-				KeyChip.ZIndex = 5
-				KeyChip.Parent = Row
-				MakeCorner(KeyChip, 3)
+-- ── Keybind chip ──────────────────────────────────────────
+local KeyChip = Instance.new("TextButton")
+KeyChip.BackgroundColor3 = C.KEYBIND_BG
+KeyChip.BorderSizePixel = 0
+KeyChip.Size = UDim2.new(0, 46, 0, 18)
+KeyChip.Position = UDim2.new(1, -104, 0.5, -9)
+KeyChip.Font = Enum.Font.GothamBold
+KeyChip.Text = boundKey and KeyName(boundKey) or "None"
+KeyChip.TextColor3 = boundKey and C.KEYBIND_ACT or C.TEXT3
+KeyChip.TextSize = 9
+KeyChip.ZIndex = 5
+KeyChip.Visible = boundKey ~= nil  -- ← ADD THIS LINE
+KeyChip.Parent = Row
+MakeCorner(KeyChip, 3)
 
 				-- small "kb" hint label above chip
 				local KbHint = Instance.new("TextLabel")
@@ -779,25 +781,26 @@ function NeronLib:CreateWindow(title, dragStiffness, dragDamping)
 				-- ── Keybind binding logic ─────────────────────────────────
 				local keyConn = nil
 
-				local function applyKey(kc)
-					boundKey = kc
-					if kc then
-						KeyChip.Text = KeyName(kc)
-						Tween(KeyChip, {TextColor3 = C.KEYBIND_ACT, BackgroundColor3 = Color3.fromRGB(28, 28, 40)}, 0.1)
-					else
-						KeyChip.Text = "None"
-						Tween(KeyChip, {TextColor3 = C.TEXT3, BackgroundColor3 = C.KEYBIND_BG}, 0.1)
-					end
-					-- Disconnect old listener if any
-					if keyConn then keyConn:Disconnect(); keyConn = nil end
-					if kc then
-						keyConn = UserInputService.InputBegan:Connect(function(input, gp)
-							if not gp and input.KeyCode == kc then
-								doToggle()
-							end
-						end)
-					end
-				end
+local function applyKey(kc)
+    boundKey = kc
+    if kc then
+        KeyChip.Text = KeyName(kc)
+        KeyChip.Visible = true  -- ← ADD THIS LINE
+        Tween(KeyChip, {TextColor3 = C.KEYBIND_ACT, BackgroundColor3 = Color3.fromRGB(28, 28, 40)}, 0.1)
+    else
+        KeyChip.Text = "None"
+        KeyChip.Visible = false  -- ← ADD THIS LINE
+        Tween(KeyChip, {TextColor3 = C.TEXT3, BackgroundColor3 = C.KEYBIND_BG}, 0.1)
+    end
+    if keyConn then keyConn:Disconnect(); keyConn = nil end
+    if kc then
+        keyConn = UserInputService.InputBegan:Connect(function(input, gp)
+            if not gp and input.KeyCode == kc then
+                doToggle()
+            end
+        end)
+    end
+end
 
 				-- Immediately wire default keybind if provided
 				if boundKey then applyKey(boundKey) end
