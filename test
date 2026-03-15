@@ -58,15 +58,15 @@ local SUB_TABS = {"General", "Additional", "Misc"}
 
 function NeronLib:CreateWindow(title)
 	local Window = {}
-	Window._tabs           = {}
-	Window._activeSideBtn  = nil
-	Window._activeTab      = nil
+	Window._tabs          = {}
+	Window._activeSideBtn = nil
+	Window._activeTab     = nil
 
 	local Gui = Instance.new("ScreenGui")
-	Gui.Name            = "NeronLib_" .. title
-	Gui.ZIndexBehavior  = Enum.ZIndexBehavior.Sibling
-	Gui.ResetOnSpawn    = false
-	Gui.Parent          = game:GetService("CoreGui")
+	Gui.Name           = "NeronLib_" .. title
+	Gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+	Gui.ResetOnSpawn   = false
+	Gui.Parent         = game:GetService("CoreGui")
 
 	local Main = Instance.new("Frame")
 	Main.BackgroundColor3 = C.BG
@@ -97,9 +97,9 @@ function NeronLib:CreateWindow(title)
 	local Sidebar = Instance.new("Frame")
 	Sidebar.BackgroundColor3 = C.NAV
 	Sidebar.BorderSizePixel  = 0
-	Sidebar.Size     = UDim2.new(0, 173, 1, 0)
-	Sidebar.ZIndex   = 2
-	Sidebar.Parent   = Main
+	Sidebar.Size   = UDim2.new(0, 173, 1, 0)
+	Sidebar.ZIndex = 2
+	Sidebar.Parent = Main
 	MakeCorner(Sidebar, 10)
 
 	local SidebarCoverRight = Instance.new("Frame")
@@ -139,8 +139,8 @@ function NeronLib:CreateWindow(title)
 	LogoText.Position = UDim2.new(0, 42, 0.5, -11)
 	LogoText.Font     = Enum.Font.GothamBold
 	LogoText.Text     = "NERON"
-	LogoText.TextColor3 = C.TEXT1
-	LogoText.TextSize   = 15
+	LogoText.TextColor3     = C.TEXT1
+	LogoText.TextSize       = 15
 	LogoText.TextXAlignment = Enum.TextXAlignment.Left
 	LogoText.ZIndex   = 3
 	LogoText.Parent   = LogoFrame
@@ -151,8 +151,8 @@ function NeronLib:CreateWindow(title)
 	LogoSub.Position = UDim2.new(0, 106, 0.5, -11)
 	LogoSub.Font     = Enum.Font.GothamBold
 	LogoSub.Text     = "CORP."
-	LogoSub.TextColor3   = C.TEXT3
-	LogoSub.TextSize     = 9
+	LogoSub.TextColor3     = C.TEXT3
+	LogoSub.TextSize       = 9
 	LogoSub.TextXAlignment = Enum.TextXAlignment.Left
 	LogoSub.ZIndex   = 3
 	LogoSub.Parent   = LogoFrame
@@ -209,8 +209,8 @@ function NeronLib:CreateWindow(title)
 	TopTitle.Position = UDim2.new(0, 22, 0, 10)
 	TopTitle.Font     = Enum.Font.GothamBold
 	TopTitle.Text     = "Select a tab"
-	TopTitle.TextColor3   = C.TEXT1
-	TopTitle.TextSize     = 14
+	TopTitle.TextColor3     = C.TEXT1
+	TopTitle.TextSize       = 14
 	TopTitle.TextXAlignment = Enum.TextXAlignment.Left
 	TopTitle.ZIndex   = 3
 	TopTitle.Parent   = TopBar
@@ -221,10 +221,10 @@ function NeronLib:CreateWindow(title)
 	TopDesc.Position = UDim2.new(0, 22, 0, 30)
 	TopDesc.Font     = Enum.Font.Gotham
 	TopDesc.Text     = ""
-	TopDesc.TextColor3   = C.TEXT3
-	TopDesc.TextSize     = 11
+	TopDesc.TextColor3     = C.TEXT3
+	TopDesc.TextSize       = 11
 	TopDesc.TextXAlignment = Enum.TextXAlignment.Left
-	TopDesc.TextWrapped  = true
+	TopDesc.TextWrapped    = true
 	TopDesc.ZIndex   = 3
 	TopDesc.Parent   = TopBar
 
@@ -244,20 +244,22 @@ function NeronLib:CreateWindow(title)
 	TopDivider.ZIndex   = 4
 	TopDivider.Parent   = TopBar
 
-	-- Content area — tabs will each have their OWN container parented here
+	-- Content area
+	-- NO UIListLayout here. Each tab container is positioned at 0,0
+	-- and only one is visible at a time.
 	local Content = Instance.new("ScrollingFrame")
-	Content.BackgroundColor3    = C.BG
-	Content.BorderSizePixel     = 0
+	Content.BackgroundColor3     = C.BG
+	Content.BorderSizePixel      = 0
 	Content.Size     = UDim2.new(1, -173, 1, -90)
 	Content.Position = UDim2.new(0, 173, 0, 90)
-	Content.ScrollBarThickness  = 3
+	Content.ScrollBarThickness   = 3
 	Content.ScrollBarImageColor3 = C.ACCENT
-	Content.AutomaticCanvasSize = Enum.AutomaticSize.Y
+	Content.AutomaticCanvasSize  = Enum.AutomaticSize.Y
 	Content.CanvasSize = UDim2.new(0, 0, 0, 0)
 	Content.ZIndex    = 2
 	Content.Parent    = Main
+	-- padding only, NO list layout
 	MakePadding(Content, 10, 10, 10, 10)
-	MakeList(Content, 4)
 
 	-- RightCtrl toggle
 	local guiVisible = true
@@ -268,30 +270,22 @@ function NeronLib:CreateWindow(title)
 		end
 	end)
 
-	--------------------------------------------------------------------
-	-- Switch which tab is visible in the content area
-	--------------------------------------------------------------------
+	-- Show one tab, hide all others
 	local function showTab(tab)
-		-- Hide all tab containers
 		for _, t in ipairs(Window._tabs) do
 			t._container.Visible = false
 			t._activeST    = nil
 			t._activeSTBtn = nil
 		end
-		-- Show the selected tab's container
 		tab._container.Visible = true
 		Window._activeTab = tab
 	end
 
-	--------------------------------------------------------------------
-	-- Build sub-tab row buttons for a given tab
-	--------------------------------------------------------------------
+	-- Rebuild the sub-tab buttons in the top bar for a given tab
 	local function buildSubTabBtns(tab)
-		-- Destroy old buttons
 		for _, child in ipairs(SubRow:GetChildren()) do
 			if child:IsA("TextButton") then child:Destroy() end
 		end
-		-- Create new ones
 		for _, stName in ipairs(SUB_TABS) do
 			local stData = tab._subTabs[stName]
 
@@ -320,9 +314,9 @@ function NeronLib:CreateWindow(title)
 			stData.btn       = Btn
 			stData.underline = Underline
 
-			local capturedName = stName
+			local sn = stName
 			Btn.MouseButton1Click:Connect(function()
-				tab:_selectSubTab(capturedName)
+				tab:_selectSubTab(sn)
 			end)
 		end
 	end
@@ -338,16 +332,13 @@ function NeronLib:CreateWindow(title)
 		CatLabel.Size = UDim2.new(1, 0, 0, 20)
 		CatLabel.Font = Enum.Font.GothamBold
 		CatLabel.Text = categoryName
-		CatLabel.TextColor3 = C.CAT_LABEL
-		CatLabel.TextSize   = 9
+		CatLabel.TextColor3     = C.CAT_LABEL
+		CatLabel.TextSize       = 9
 		CatLabel.TextXAlignment = Enum.TextXAlignment.Left
 		CatLabel.ZIndex = 4
 		CatLabel.Parent = SideScroll
 		MakePadding(CatLabel, 6, 0, 14, 0)
 
-		--------------------------------------------------------------------
-		-- Category:AddTab
-		--------------------------------------------------------------------
 		function Category:AddTab(name, icon, desc)
 			local Tab = {}
 			Tab._name        = name
@@ -356,40 +347,40 @@ function NeronLib:CreateWindow(title)
 			Tab._activeST    = nil
 			Tab._activeSTBtn = nil
 
-			-- Each tab gets its OWN container frame inside Content
-			-- Only the active tab's container is visible at a time
-			local TabContainer = Instance.new("Frame")
-			TabContainer.Name                = "TabContainer_" .. name
+			-- Tab container — sits at top-left of Content, full width
+			-- NO position offset, NO UIListLayout on Content
+			-- Visibility toggles which one shows
+			local TabContainer = Instance.new("ScrollingFrame")
+			TabContainer.Name                 = "TC_" .. name
 			TabContainer.BackgroundTransparency = 1
-			TabContainer.BorderSizePixel     = 0
-			TabContainer.Size                = UDim2.new(1, 0, 0, 0)
-			TabContainer.AutomaticSize       = Enum.AutomaticSize.Y
-			TabContainer.Visible             = false
-			TabContainer.ZIndex              = 3
-			TabContainer.Parent              = Content
+			TabContainer.BorderSizePixel      = 0
+			TabContainer.Size                 = UDim2.new(1, 0, 0, 0)
+			TabContainer.AutomaticCanvasSize  = Enum.AutomaticSize.Y
+			TabContainer.CanvasSize           = UDim2.new(0, 0, 0, 0)
+			TabContainer.ScrollBarThickness   = 0
+			TabContainer.Visible              = false
+			TabContainer.ZIndex               = 3
+			TabContainer.Parent               = Content
 			MakeList(TabContainer, 4)
 			Tab._container = TabContainer
 
-			-- Build one frame per sub-tab inside the container
+			-- Sub-tab frames inside the container
 			for _, stName in ipairs(SUB_TABS) do
 				local F = Instance.new("Frame")
-				F.Name                = "STFrame_" .. stName
 				F.BackgroundTransparency = 1
-				F.BorderSizePixel     = 0
-				F.Size                = UDim2.new(1, 0, 0, 0)
-				F.AutomaticSize       = Enum.AutomaticSize.Y
-				F.Visible             = false
-				F.ZIndex              = 3
-				F.Parent              = TabContainer
+				F.BorderSizePixel        = 0
+				F.Size                   = UDim2.new(1, 0, 0, 0)
+				F.AutomaticSize          = Enum.AutomaticSize.Y
+				F.Visible                = false
+				F.ZIndex                 = 3
+				F.Parent                 = TabContainer
 				MakeList(F, 4)
 				Tab._subTabs[stName] = {frame = F, btn = nil, underline = nil}
 			end
 
-			-- _selectSubTab
 			function Tab:_selectSubTab(stName)
 				local stData = Tab._subTabs[stName]
 				if not stData or not stData.btn then return end
-
 				if Tab._activeSTBtn then
 					Tween(Tab._activeSTBtn, {TextColor3 = C.TEXT2}, 0.1)
 				end
@@ -397,7 +388,6 @@ function NeronLib:CreateWindow(title)
 					Tab._subTabs[Tab._activeST].underline.Visible = false
 					Tab._subTabs[Tab._activeST].frame.Visible     = false
 				end
-
 				Tab._activeST    = stName
 				Tab._activeSTBtn = stData.btn
 				Tween(stData.btn, {TextColor3 = C.TEXT1}, 0.1)
@@ -407,9 +397,9 @@ function NeronLib:CreateWindow(title)
 
 			-- Sidebar button
 			local SideBtn = Instance.new("TextButton")
-			SideBtn.BackgroundColor3    = C.ITEM
+			SideBtn.BackgroundColor3       = C.ITEM
 			SideBtn.BackgroundTransparency = 1
-			SideBtn.BorderSizePixel     = 0
+			SideBtn.BorderSizePixel        = 0
 			SideBtn.Size   = UDim2.new(1, 0, 0, 28)
 			SideBtn.Font   = Enum.Font.Gotham
 			SideBtn.Text   = ""
@@ -418,6 +408,7 @@ function NeronLib:CreateWindow(title)
 			MakeCorner(SideBtn, 4)
 
 			local IconLbl = Instance.new("TextLabel")
+			IconLbl.Name                   = "IconLbl"
 			IconLbl.BackgroundTransparency = 1
 			IconLbl.Size     = UDim2.new(0, 18, 1, 0)
 			IconLbl.Position = UDim2.new(0, 10, 0, 0)
@@ -429,18 +420,20 @@ function NeronLib:CreateWindow(title)
 			IconLbl.Parent   = SideBtn
 
 			local NameLbl = Instance.new("TextLabel")
+			NameLbl.Name                   = "NameLbl"
 			NameLbl.BackgroundTransparency = 1
 			NameLbl.Size     = UDim2.new(1, -34, 1, 0)
 			NameLbl.Position = UDim2.new(0, 30, 0, 0)
 			NameLbl.Font     = Enum.Font.Gotham
 			NameLbl.Text     = name
-			NameLbl.TextColor3   = C.TEXT2
-			NameLbl.TextSize     = 11
+			NameLbl.TextColor3     = C.TEXT2
+			NameLbl.TextSize       = 11
 			NameLbl.TextXAlignment = Enum.TextXAlignment.Left
 			NameLbl.ZIndex   = 5
 			NameLbl.Parent   = SideBtn
 
 			local AccBar = Instance.new("Frame")
+			AccBar.Name             = "AccBar"
 			AccBar.BackgroundColor3 = C.ACCENT
 			AccBar.BorderSizePixel  = 0
 			AccBar.Size     = UDim2.new(0, 2, 0.6, 0)
@@ -452,66 +445,59 @@ function NeronLib:CreateWindow(title)
 
 			SideBtn.MouseEnter:Connect(function()
 				if Window._activeSideBtn ~= SideBtn then
-					Tween(SideBtn,  {BackgroundTransparency = 0.82}, 0.12)
-					Tween(NameLbl,  {TextColor3 = C.TEXT1},          0.12)
-					Tween(IconLbl,  {TextColor3 = C.TEXT2},          0.12)
+					Tween(SideBtn, {BackgroundTransparency = 0.82}, 0.12)
+					Tween(NameLbl, {TextColor3 = C.TEXT1},          0.12)
+					Tween(IconLbl, {TextColor3 = C.TEXT2},          0.12)
 				end
 			end)
 			SideBtn.MouseLeave:Connect(function()
 				if Window._activeSideBtn ~= SideBtn then
-					Tween(SideBtn,  {BackgroundTransparency = 1},    0.12)
-					Tween(NameLbl,  {TextColor3 = C.TEXT2},          0.12)
-					Tween(IconLbl,  {TextColor3 = C.TEXT3},          0.12)
+					Tween(SideBtn, {BackgroundTransparency = 1},    0.12)
+					Tween(NameLbl, {TextColor3 = C.TEXT2},          0.12)
+					Tween(IconLbl, {TextColor3 = C.TEXT3},          0.12)
 				end
 			end)
 
 			SideBtn.MouseButton1Click:Connect(function()
 				if Window._activeSideBtn == SideBtn then return end
 
-				-- Deselect old sidebar button
+				-- Deselect old
 				if Window._activeSideBtn then
 					local prev = Window._activeSideBtn
 					Tween(prev, {BackgroundTransparency = 1}, 0.15)
-					local prevName = prev:FindFirstChild("NameLbl")
-					local prevIcon = prev:FindFirstChild("IconLbl")
-					local prevAcc  = prev:FindFirstChild("AccBar")
-					if prevName then Tween(prevName, {TextColor3 = C.TEXT2}, 0.15) end
-					if prevIcon then Tween(prevIcon, {TextColor3 = C.TEXT3}, 0.15) end
-					if prevAcc  then prevAcc.Visible = false end
+					local pn = prev:FindFirstChild("NameLbl")
+					local pi = prev:FindFirstChild("IconLbl")
+					local pa = prev:FindFirstChild("AccBar")
+					if pn then Tween(pn, {TextColor3 = C.TEXT2}, 0.15) end
+					if pi then Tween(pi, {TextColor3 = C.TEXT3}, 0.15) end
+					if pa then pa.Visible = false end
 				end
 
-				-- Activate this button
 				Window._activeSideBtn = SideBtn
 				Tween(SideBtn, {BackgroundTransparency = 0.75}, 0.15)
 				Tween(NameLbl, {TextColor3 = C.TEXT1},          0.15)
 				Tween(IconLbl, {TextColor3 = C.ACCENT_DIM},     0.15)
 				AccBar.Visible = true
 
-				-- Update top bar
 				TopTitle.Text = name
 				TopDesc.Text  = Tab._desc
 
-				-- Show this tab's content, hide everything else
 				showTab(Tab)
-
-				-- Build sub-tab row for this tab
 				buildSubTabBtns(Tab)
 
-				-- Select General
 				Tab._activeST    = nil
 				Tab._activeSTBtn = nil
 				Tab:_selectSubTab("General")
 			end)
 
-			-- Helper: get the right sub-tab frame
 			local function getFrame(subTab)
 				local st = subTab or "General"
-				local stData = Tab._subTabs[st]
-				return stData and stData.frame or nil
+				local d  = Tab._subTabs[st]
+				return d and d.frame or nil
 			end
 
 			----------------------------------------------------------------
-			-- Tab:AddToggle
+			-- AddToggle
 			----------------------------------------------------------------
 			function Tab:AddToggle(label, description, default, callback, subTab)
 				local frame = getFrame(subTab)
@@ -532,8 +518,8 @@ function NeronLib:CreateWindow(title)
 				LabelTxt.Position = UDim2.new(0, 16, 0, 6)
 				LabelTxt.Font     = Enum.Font.GothamBold
 				LabelTxt.Text     = label
-				LabelTxt.TextColor3   = C.TEXT1
-				LabelTxt.TextSize     = 12
+				LabelTxt.TextColor3     = C.TEXT1
+				LabelTxt.TextSize       = 12
 				LabelTxt.TextXAlignment = Enum.TextXAlignment.Left
 				LabelTxt.ZIndex   = 4
 				LabelTxt.Parent   = Row
@@ -545,10 +531,10 @@ function NeronLib:CreateWindow(title)
 					DescTxt.Position = UDim2.new(0, 16, 0, 26)
 					DescTxt.Font     = Enum.Font.Gotham
 					DescTxt.Text     = description
-					DescTxt.TextColor3   = C.TEXT3
-					DescTxt.TextSize     = 10
+					DescTxt.TextColor3     = C.TEXT3
+					DescTxt.TextSize       = 10
 					DescTxt.TextXAlignment = Enum.TextXAlignment.Left
-					DescTxt.TextWrapped  = true
+					DescTxt.TextWrapped    = true
 					DescTxt.ZIndex   = 4
 					DescTxt.Parent   = Row
 				end
@@ -583,9 +569,9 @@ function NeronLib:CreateWindow(title)
 
 				local function updateToggle()
 					if isOn then
-						Tween(Knob, {Position = UDim2.new(0, 18, 0.5, -8),    BackgroundColor3 = C.TOG_ON},  0.2)
+						Tween(Knob, {Position = UDim2.new(0, 18, 0.5, -8),  BackgroundColor3 = C.TOG_ON},  0.2)
 					else
-						Tween(Knob, {Position = UDim2.new(1, -34, 0.5, -8),   BackgroundColor3 = C.TOG_OFF}, 0.2)
+						Tween(Knob, {Position = UDim2.new(1, -34, 0.5, -8), BackgroundColor3 = C.TOG_OFF}, 0.2)
 					end
 				end
 
@@ -602,7 +588,7 @@ function NeronLib:CreateWindow(title)
 			end
 
 			----------------------------------------------------------------
-			-- Tab:AddButton
+			-- AddButton
 			----------------------------------------------------------------
 			function Tab:AddButton(label, description, callback, subTab)
 				if type(description) == "function" then
@@ -627,8 +613,8 @@ function NeronLib:CreateWindow(title)
 				LabelTxt.Position = UDim2.new(0, 16, 0, description and 6 or 7)
 				LabelTxt.Font     = Enum.Font.GothamBold
 				LabelTxt.Text     = label
-				LabelTxt.TextColor3   = C.TEXT1
-				LabelTxt.TextSize     = 12
+				LabelTxt.TextColor3     = C.TEXT1
+				LabelTxt.TextSize       = 12
 				LabelTxt.TextXAlignment = Enum.TextXAlignment.Left
 				LabelTxt.ZIndex   = 4
 				LabelTxt.Parent   = Row
@@ -640,8 +626,8 @@ function NeronLib:CreateWindow(title)
 					DescTxt.Position = UDim2.new(0, 16, 0, 27)
 					DescTxt.Font     = Enum.Font.Gotham
 					DescTxt.Text     = description
-					DescTxt.TextColor3   = C.TEXT3
-					DescTxt.TextSize     = 10
+					DescTxt.TextColor3     = C.TEXT3
+					DescTxt.TextSize       = 10
 					DescTxt.TextXAlignment = Enum.TextXAlignment.Left
 					DescTxt.ZIndex   = 4
 					DescTxt.Parent   = Row
@@ -664,7 +650,7 @@ function NeronLib:CreateWindow(title)
 			end
 
 			----------------------------------------------------------------
-			-- Tab:AddSlider
+			-- AddSlider
 			----------------------------------------------------------------
 			function Tab:AddSlider(label, description, min, max, default, callback, subTab)
 				if type(description) == "number" then
@@ -688,8 +674,8 @@ function NeronLib:CreateWindow(title)
 				LabelTxt.Position = UDim2.new(0, 16, 0, 6)
 				LabelTxt.Font     = Enum.Font.GothamBold
 				LabelTxt.Text     = label
-				LabelTxt.TextColor3   = C.TEXT1
-				LabelTxt.TextSize     = 12
+				LabelTxt.TextColor3     = C.TEXT1
+				LabelTxt.TextSize       = 12
 				LabelTxt.TextXAlignment = Enum.TextXAlignment.Left
 				LabelTxt.ZIndex   = 4
 				LabelTxt.Parent   = Row
@@ -700,8 +686,8 @@ function NeronLib:CreateWindow(title)
 				ValueTxt.Position = UDim2.new(1, -64, 0, 6)
 				ValueTxt.Font     = Enum.Font.GothamBold
 				ValueTxt.Text     = tostring(value)
-				ValueTxt.TextColor3   = C.ACCENT_DIM
-				ValueTxt.TextSize     = 12
+				ValueTxt.TextColor3     = C.ACCENT_DIM
+				ValueTxt.TextSize       = 12
 				ValueTxt.TextXAlignment = Enum.TextXAlignment.Right
 				ValueTxt.ZIndex   = 4
 				ValueTxt.Parent   = Row
@@ -755,9 +741,9 @@ function NeronLib:CreateWindow(title)
 					if draggingSlider and i.UserInputType == Enum.UserInputType.MouseMovement then
 						local pct = math.clamp((i.Position.X - TrackBG.AbsolutePosition.X) / TrackBG.AbsoluteSize.X, 0, 1)
 						value = math.floor(min + (max - min) * pct + 0.5)
-						ValueTxt.Text        = tostring(value)
-						Fill.Size            = UDim2.new(pct, 0, 1, 0)
-						SliderKnob.Position  = UDim2.new(pct, -6, 0.5, -6)
+						ValueTxt.Text       = tostring(value)
+						Fill.Size           = UDim2.new(pct, 0, 1, 0)
+						SliderKnob.Position = UDim2.new(pct, -6, 0.5, -6)
 						if callback then callback(value) end
 					end
 				end)
@@ -776,7 +762,7 @@ function NeronLib:CreateWindow(title)
 			end
 
 			----------------------------------------------------------------
-			-- Tab:AddTextbox
+			-- AddTextbox
 			----------------------------------------------------------------
 			function Tab:AddTextbox(label, placeholder, callback, subTab)
 				local frame = getFrame(subTab)
@@ -796,8 +782,8 @@ function NeronLib:CreateWindow(title)
 				LabelTxt.Position = UDim2.new(0, 16, 0, 5)
 				LabelTxt.Font     = Enum.Font.GothamBold
 				LabelTxt.Text     = label
-				LabelTxt.TextColor3   = C.TEXT1
-				LabelTxt.TextSize     = 12
+				LabelTxt.TextColor3     = C.TEXT1
+				LabelTxt.TextSize       = 12
 				LabelTxt.TextXAlignment = Enum.TextXAlignment.Left
 				LabelTxt.ZIndex   = 4
 				LabelTxt.Parent   = Row
@@ -816,11 +802,11 @@ function NeronLib:CreateWindow(title)
 				InputBox.Size     = UDim2.new(1, -12, 1, 0)
 				InputBox.Position = UDim2.new(0, 6, 0, 0)
 				InputBox.Font     = Enum.Font.Gotham
-				InputBox.PlaceholderText  = placeholder or ""
+				InputBox.PlaceholderText   = placeholder or ""
 				InputBox.PlaceholderColor3 = C.TEXT3
 				InputBox.Text     = ""
-				InputBox.TextColor3   = C.TEXT1
-				InputBox.TextSize     = 11
+				InputBox.TextColor3     = C.TEXT1
+				InputBox.TextSize       = 11
 				InputBox.TextXAlignment = Enum.TextXAlignment.Left
 				InputBox.ClearTextOnFocus = false
 				InputBox.ZIndex   = 5
@@ -837,7 +823,7 @@ function NeronLib:CreateWindow(title)
 			end
 
 			----------------------------------------------------------------
-			-- Tab:AddDropdown
+			-- AddDropdown
 			----------------------------------------------------------------
 			function Tab:AddDropdown(label, options, default, callback, subTab)
 				if type(default) == "function" then
@@ -849,12 +835,12 @@ function NeronLib:CreateWindow(title)
 				local open = false
 
 				local Row = Instance.new("Frame")
-				Row.BackgroundColor3  = C.ITEM
-				Row.BorderSizePixel   = 0
-				Row.Size              = UDim2.new(1, 0, 0, 49)
-				Row.ClipsDescendants  = false
-				Row.ZIndex            = 10
-				Row.Parent            = frame
+				Row.BackgroundColor3 = C.ITEM
+				Row.BorderSizePixel  = 0
+				Row.Size             = UDim2.new(1, 0, 0, 49)
+				Row.ClipsDescendants = false
+				Row.ZIndex           = 10
+				Row.Parent           = frame
 				MakeCorner(Row, 4)
 
 				local LabelTxt = Instance.new("TextLabel")
@@ -863,8 +849,8 @@ function NeronLib:CreateWindow(title)
 				LabelTxt.Position = UDim2.new(0, 16, 0, 6)
 				LabelTxt.Font     = Enum.Font.GothamBold
 				LabelTxt.Text     = label
-				LabelTxt.TextColor3   = C.TEXT1
-				LabelTxt.TextSize     = 12
+				LabelTxt.TextColor3     = C.TEXT1
+				LabelTxt.TextSize       = 12
 				LabelTxt.TextXAlignment = Enum.TextXAlignment.Left
 				LabelTxt.ZIndex   = 11
 				LabelTxt.Parent   = Row
@@ -876,8 +862,8 @@ function NeronLib:CreateWindow(title)
 				DropBtn.Position = UDim2.new(0, 16, 0, 22)
 				DropBtn.Font     = Enum.Font.Gotham
 				DropBtn.Text     = selected
-				DropBtn.TextColor3   = C.TEXT2
-				DropBtn.TextSize     = 11
+				DropBtn.TextColor3     = C.TEXT2
+				DropBtn.TextSize       = 11
 				DropBtn.TextXAlignment = Enum.TextXAlignment.Left
 				DropBtn.ZIndex   = 11
 				DropBtn.Parent   = Row
@@ -909,40 +895,34 @@ function NeronLib:CreateWindow(title)
 
 				for _, opt in ipairs(options) do
 					local OptBtn = Instance.new("TextButton")
-					OptBtn.BackgroundColor3    = C.DROPDOWN_BG
+					OptBtn.BackgroundColor3       = C.DROPDOWN_BG
 					OptBtn.BackgroundTransparency = 1
-					OptBtn.BorderSizePixel     = 0
+					OptBtn.BorderSizePixel        = 0
 					OptBtn.Size   = UDim2.new(1, 0, 0, 22)
 					OptBtn.Font   = Enum.Font.Gotham
 					OptBtn.Text   = opt
-					OptBtn.TextColor3 = opt == selected and C.TEXT1 or C.TEXT2
-					OptBtn.TextSize   = 11
+					OptBtn.TextColor3     = opt == selected and C.TEXT1 or C.TEXT2
+					OptBtn.TextSize       = 11
 					OptBtn.TextXAlignment = Enum.TextXAlignment.Left
 					OptBtn.ZIndex = 21
 					OptBtn.Parent = DropList
 					MakePadding(OptBtn, 0, 0, 6, 6)
 					MakeCorner(OptBtn, 3)
-
 					OptBtn.MouseEnter:Connect(function() Tween(OptBtn, {BackgroundTransparency = 0.7}, 0.1) end)
 					OptBtn.MouseLeave:Connect(function() Tween(OptBtn, {BackgroundTransparency = 1},   0.1) end)
 					OptBtn.MouseButton1Click:Connect(function()
-						selected = opt
-						DropBtn.Text = opt
+						selected = opt; DropBtn.Text = opt
 						for _, o in ipairs(DropList:GetChildren()) do
-							if o:IsA("TextButton") then
-								o.TextColor3 = o.Text == selected and C.TEXT1 or C.TEXT2
-							end
+							if o:IsA("TextButton") then o.TextColor3 = o.Text == selected and C.TEXT1 or C.TEXT2 end
 						end
-						open = false
-						DropList.Visible = false
+						open = false; DropList.Visible = false
 						Tween(DropArrow, {Rotation = 0}, 0.15)
 						if callback then callback(selected) end
 					end)
 				end
 
 				DropBtn.MouseButton1Click:Connect(function()
-					open = not open
-					DropList.Visible = open
+					open = not open; DropList.Visible = open
 					Tween(DropArrow, {Rotation = open and 180 or 0}, 0.15)
 				end)
 
@@ -953,32 +933,20 @@ function NeronLib:CreateWindow(title)
 			end
 
 			----------------------------------------------------------------
-			-- Tab:AddLabel
+			-- AddLabel
 			----------------------------------------------------------------
 			function Tab:AddLabel(text, subTab)
 				local frame = getFrame(subTab)
 				if not frame then return end
-
 				local Row = Instance.new("Frame")
-				Row.BackgroundColor3 = C.ITEM
-				Row.BorderSizePixel  = 0
-				Row.Size   = UDim2.new(1, 0, 0, 32)
-				Row.ZIndex = 3
-				Row.Parent = frame
+				Row.BackgroundColor3 = C.ITEM; Row.BorderSizePixel = 0
+				Row.Size = UDim2.new(1, 0, 0, 32); Row.ZIndex = 3; Row.Parent = frame
 				MakeCorner(Row, 4)
-
 				local LabelTxt = Instance.new("TextLabel")
-				LabelTxt.BackgroundTransparency = 1
-				LabelTxt.Size     = UDim2.new(1, -16, 1, 0)
-				LabelTxt.Position = UDim2.new(0, 16, 0, 0)
-				LabelTxt.Font     = Enum.Font.Gotham
-				LabelTxt.Text     = text
-				LabelTxt.TextColor3   = C.TEXT2
-				LabelTxt.TextSize     = 11
-				LabelTxt.TextXAlignment = Enum.TextXAlignment.Left
-				LabelTxt.ZIndex   = 4
-				LabelTxt.Parent   = Row
-
+				LabelTxt.BackgroundTransparency = 1; LabelTxt.Size = UDim2.new(1, -16, 1, 0)
+				LabelTxt.Position = UDim2.new(0, 16, 0, 0); LabelTxt.Font = Enum.Font.Gotham
+				LabelTxt.Text = text; LabelTxt.TextColor3 = C.TEXT2; LabelTxt.TextSize = 11
+				LabelTxt.TextXAlignment = Enum.TextXAlignment.Left; LabelTxt.ZIndex = 4; LabelTxt.Parent = Row
 				local ctrl = {}
 				function ctrl:Set(v) LabelTxt.Text = v end
 				function ctrl:Get() return LabelTxt.Text end
@@ -986,18 +954,14 @@ function NeronLib:CreateWindow(title)
 			end
 
 			----------------------------------------------------------------
-			-- Tab:AddSeparator
+			-- AddSeparator
 			----------------------------------------------------------------
 			function Tab:AddSeparator(subTab)
 				local frame = getFrame(subTab)
 				if not frame then return end
-
 				local Sep = Instance.new("Frame")
-				Sep.BackgroundColor3 = C.DIVIDER
-				Sep.BorderSizePixel  = 0
-				Sep.Size   = UDim2.new(1, 0, 0, 1)
-				Sep.ZIndex = 3
-				Sep.Parent = frame
+				Sep.BackgroundColor3 = C.DIVIDER; Sep.BorderSizePixel = 0
+				Sep.Size = UDim2.new(1, 0, 0, 1); Sep.ZIndex = 3; Sep.Parent = frame
 			end
 
 			table.insert(Window._tabs, Tab)
