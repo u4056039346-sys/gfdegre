@@ -1570,7 +1570,7 @@ function NeronLib:CreateWindow(title, dragStiffness, dragDamping, defaultTab)
 	function Window:OpenTab(name)
 		for _, tab in ipairs(self._tabs) do
 			if tab._name == name and tab._sideBtn then
-				tab._sideBtn:Fire()
+				tab._sideBtn:Activate()
 				return true
 			end
 		end
