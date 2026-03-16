@@ -93,7 +93,7 @@ local function KeyName(keyCode)
 	return name
 end
 
-function NeronLib:CreateWindow(title, dragStiffness, dragDamping)
+function NeronLib:CreateWindow(title, dragStiffness, dragDamping, defaultTab)
 	local Window = {}
 	Window._tabs = {}
 	Window._activeSideBtn = nil
@@ -462,6 +462,9 @@ function NeronLib:CreateWindow(title, dragStiffness, dragDamping)
 			SideBtn.Parent = CatContainer
 			MakeCorner(SideBtn, 4)
 
+			-- Store reference on Tab for OpenTab / DefaultTab use
+			Tab._sideBtn = SideBtn
+
 			local IconLbl = Instance.new("TextLabel")
 			IconLbl.Name = "IconLbl"
 			IconLbl.BackgroundTransparency = 1
@@ -497,6 +500,11 @@ function NeronLib:CreateWindow(title, dragStiffness, dragDamping)
 			AccBar.ZIndex = 5
 			AccBar.Parent = SideBtn
 			MakeCorner(AccBar, 2)
+
+			-- Store label/icon/accbar refs on Tab so OpenTab can update them
+			Tab._sideBtnNameLbl = NameLbl
+			Tab._sideBtnIconLbl = IconLbl
+			Tab._sideBtnAccBar  = AccBar
 
 			SideBtn.MouseEnter:Connect(function()
 				if Window._activeSideBtn ~= SideBtn then
@@ -590,6 +598,34 @@ function NeronLib:CreateWindow(title, dragStiffness, dragDamping)
 				end
 			end
 
+			local function activateTab(tab, tabName, tabDesc, tabNameLbl, tabIconLbl, tabAccBar, tabSideBtn)
+				deselectCurrentSideBtn()
+				Window._activeSideBtn        = tabSideBtn
+				Window._activeSideBtnNameLbl = tabNameLbl
+				Window._activeSideBtnIconLbl = tabIconLbl
+				Window._activeSideBtnAccBar  = tabAccBar
+				Tween(tabSideBtn,  {BackgroundTransparency = 0.75}, 0.15)
+				Tween(tabNameLbl,  {TextColor3 = C.TEXT1},          0.15)
+				Tween(tabIconLbl,  {TextColor3 = C.ACCENT_DIM},     0.15)
+				tabAccBar.Visible = true
+
+				-- Fade out title
+				Tween(TopTitle, {TextTransparency = 1}, 0.08)
+				Tween(TopDesc,  {TextTransparency = 1}, 0.08)
+
+				task.delay(0.14, function()
+					hideAllTabContent()
+					TopTitle.Text = tabName
+					TopDesc.Text  = tabDesc
+					Tween(TopTitle, {TextTransparency = 0}, 0.15)
+					Tween(TopDesc,  {TextTransparency = 0}, 0.15)
+					buildSubTabBtns()
+					tab._activeST    = nil
+					tab._activeSTBtn = nil
+					tab:_selectSubTab("General")
+				end)
+			end
+
 			SideBtn.MouseButton1Click:Connect(function()
 				if Window._activeSideBtn == SideBtn then return end
 
@@ -609,38 +645,13 @@ function NeronLib:CreateWindow(title, dragStiffness, dragDamping)
 					end
 				end
 
-				-- Sidebar button animates immediately
-				deselectCurrentSideBtn()
-				Window._activeSideBtn = SideBtn
-				Window._activeSideBtnNameLbl = NameLbl
-				Window._activeSideBtnIconLbl = IconLbl
-				Window._activeSideBtnAccBar = AccBar
-				Tween(SideBtn, {BackgroundTransparency = 0.75}, 0.15)
-				Tween(NameLbl, {TextColor3 = C.TEXT1}, 0.15)
-				Tween(IconLbl, {TextColor3 = C.ACCENT_DIM}, 0.15)
-				AccBar.Visible = true
-
-				-- Fade out title
-				Tween(TopTitle, {TextTransparency = 1}, 0.08)
-				Tween(TopDesc, {TextTransparency = 1}, 0.08)
-
-				-- After fade-out completes, swap content in
-				task.delay(0.14, function()
+				task.delay(0, function()
 					for _, f in ipairs(fadingFrames) do
 						f.Visible = false
 					end
-					hideAllTabContent()
-
-					TopTitle.Text = name
-					TopDesc.Text = Tab._desc
-					Tween(TopTitle, {TextTransparency = 0}, 0.15)
-					Tween(TopDesc, {TextTransparency = 0}, 0.15)
-
-					buildSubTabBtns()
-					Tab._activeST = nil
-					Tab._activeSTBtn = nil
-					Tab:_selectSubTab("General")
 				end)
+
+				activateTab(Tab, name, Tab._desc, NameLbl, IconLbl, AccBar, SideBtn)
 			end)
 
 			local function getFrame(subTab)
@@ -1552,6 +1563,26 @@ function NeronLib:CreateWindow(title, dragStiffness, dragDamping)
 
 		return Category
 	end -- end Window:AddCategory
+
+	--------------------------------------------------------------------
+	-- Window:OpenTab  (public method — call anytime after tabs are built)
+	--------------------------------------------------------------------
+	function Window:OpenTab(name)
+		for _, tab in ipairs(self._tabs) do
+			if tab._name == name and tab._sideBtn then
+				tab._sideBtn:Fire()
+				return true
+			end
+		end
+		return false
+	end
+
+	-- Auto-open defaultTab after all AddTab calls have had a chance to run
+	if defaultTab then
+		task.defer(function()
+			Window:OpenTab(defaultTab)
+		end)
+	end
 
 	return Window
 end -- end NeronLib:CreateWindow
