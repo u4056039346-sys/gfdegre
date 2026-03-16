@@ -1567,15 +1567,15 @@ function NeronLib:CreateWindow(title, dragStiffness, dragDamping, defaultTab)
 	--------------------------------------------------------------------
 	-- Window:OpenTab  (public method — call anytime after tabs are built)
 	--------------------------------------------------------------------
-	function Window:OpenTab(name)
-		for _, tab in ipairs(self._tabs) do
-			if tab._name == name and tab._sideBtn then
-				tab._sideBtn:Fire()
-				return true
-			end
+function Window:OpenTab(name)
+	for _, tab in ipairs(self._tabs) do
+		if tab._name == name and tab._sideBtn then
+			tab._sideBtn:Activate()
+			return true
 		end
-		return false
 	end
+	return false
+end
 
 	-- Auto-open defaultTab after all AddTab calls have had a chance to run
 	if defaultTab then
