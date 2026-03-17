@@ -1,0 +1,67 @@
+local function HideUI()
+    local duration = 0.25
+    Main.Visible = true
+
+    -- Fade Main background
+    local mainTween = TweenService:Create(Main, TweenInfo.new(duration, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+        BackgroundTransparency = 1
+    })
+
+    -- Fade Shadow
+    local shadowTween
+    if Shadow then
+        shadowTween = TweenService:Create(Shadow, TweenInfo.new(duration, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+            ImageTransparency = 1
+        })
+    end
+
+    -- Fade all children correctly
+    local tweens = {}
+    for _, obj in ipairs(Main:GetDescendants()) do
+        if obj:IsA("TextLabel") or obj:IsA("TextButton") then
+            table.insert(tweens, TweenService:Create(obj, TweenInfo.new(duration, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {TextTransparency = 1}))
+        elseif obj:IsA("ImageLabel") and obj ~= Shadow then
+            table.insert(tweens, TweenService:Create(obj, TweenInfo.new(duration, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {ImageTransparency = 1}))
+        end
+    end
+
+    -- Play everything
+    mainTween:Play()
+    if shadowTween then shadowTween:Play() end
+    for _, tw in ipairs(tweens) do tw:Play() end
+
+    -- Hide Main after tween finishes
+    mainTween.Completed:Connect(function()
+        Main.Visible = false
+    end)
+end
+
+local function ShowUI()
+    Main.Visible = true
+    local duration = 0.25
+
+    local mainTween = TweenService:Create(Main, TweenInfo.new(duration, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+        BackgroundTransparency = 0
+    })
+
+    local shadowTween
+    if Shadow then
+        shadowTween = TweenService:Create(Shadow, TweenInfo.new(duration, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+            ImageTransparency = 0
+        })
+    end
+
+    local tweens = {}
+    for _, obj in ipairs(Main:GetDescendants()) do
+        if obj:IsA("TextLabel") or obj:IsA("TextButton") then
+            table.insert(tweens, TweenService:Create(obj, TweenInfo.new(duration, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {TextTransparency = 0}))
+        elseif obj:IsA("ImageLabel") and obj ~= Shadow then
+            table.insert(tweens, TweenService:Create(obj, TweenInfo.new(duration, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {ImageTransparency = 0}))
+        end
+    end
+
+    -- Play everything
+    mainTween:Play()
+    if shadowTween then shadowTween:Play() end
+    for _, tw in ipairs(tweens) do tw:Play() end
+end
