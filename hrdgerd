@@ -1,0 +1,332 @@
+-- NeronConfig.lua  (auto-registration edition)
+-- Patches NeronLib so every AddToggle / AddSlider / AddDropdown /
+-- AddMultiDropdown / AddRangeSlider / AddTextbox automatically saves.
+--
+-- ── USAGE ────────────────────────────────────────────────────────────────────
+--
+--   local NeronLib = loadstring(game:HttpGet("YOUR_NERONLIB_URL"))()
+--   local Config   = loadstring(game:HttpGet("YOUR_NERONCONFIG_URL"))()
+--
+--   Config.Init("MyScriptName")  -- sets the save-file name (call before Patch)
+--   Config.Patch(NeronLib)       -- patches the lib ONCE before any windows
+--
+--   local Win = NeronLib:CreateWindow("My Menu")
+--   -- build all your tabs and controls exactly as before – nothing else needed
+--
+--   Config.Load()                -- call ONCE after all controls are built
+--
+-- ─────────────────────────────────────────────────────────────────────────────
+
+local Config = {}
+
+-- ─── internal state ───────────────────────────────────────────────────────────
+local _fileName   = "NeronScript_config.json"
+local _entries    = {}    -- array of { key, ctrl, kind }
+local _entryIndex = {}    -- key → entry  (collision-guard)
+local _data       = {}    -- key → saved value  (lives in memory)
+local _autoSave   = true
+local _saveDelay  = 1.5   -- seconds debounce before writing to disk
+local _saveThread = nil
+local _patched    = false
+
+-- ─── tiny JSON encoder / decoder (zero dependencies) ─────────────────────────
+local JSON = {}
+
+local function escStr(s)
+    return (s:gsub('\\','\\\\'):gsub('"','\\"')
+             :gsub('\n','\\n'):gsub('\r','\\r'):gsub('\t','\\t'))
+end
+
+local function enc(v)
+    local t = type(v)
+    if t == "boolean" then
+        return v and "true" or "false"
+    elseif t == "number" then
+        return tostring(v)
+    elseif t == "string" then
+        return '"' .. escStr(v) .. '"'
+    elseif t == "table" then
+        local isArr, n = true, 0
+        for k in pairs(v) do
+            if type(k) ~= "number" then isArr = false; break end
+            if k > n then n = k end
+        end
+        if isArr and n == #v then
+            local p = {}
+            for _, x in ipairs(v) do p[#p+1] = enc(x) end
+            return "[" .. table.concat(p, ",") .. "]"
+        else
+            local p = {}
+            for k, x in pairs(v) do
+                p[#p+1] = '"' .. escStr(tostring(k)) .. '":' .. enc(x)
+            end
+            return "{" .. table.concat(p, ",") .. "}"
+        end
+    end
+    return "null"
+end
+
+function JSON.encode(t) return enc(t) end
+
+-- decoder
+local parseVal
+local function skipWS(s, i)
+    while i <= #s and s:sub(i,i):match("%s") do i = i+1 end
+    return i
+end
+local function parseStr(s, i)
+    i = i+1; local r = {}
+    while i <= #s do
+        local c = s:sub(i,i)
+        if c == '"' then
+            return table.concat(r), i+1
+        elseif c == '\\' then
+            local n = s:sub(i+1,i+1)
+            local map = {['"']='"',['\\']='\\',n='\n',r='\r',t='\t'}
+            r[#r+1] = map[n] or n; i = i+2
+        else
+            r[#r+1] = c; i = i+1
+        end
+    end
+    return table.concat(r), i
+end
+local function parseArr(s, i)
+    i = i+1; local a = {}; i = skipWS(s, i)
+    if s:sub(i,i) == ']' then return a, i+1 end
+    while true do
+        local v; v,i = parseVal(s, i); a[#a+1] = v; i = skipWS(s, i)
+        if s:sub(i,i) == ']' then return a, i+1 end
+        i = i+1; i = skipWS(s, i)
+    end
+end
+local function parseObj(s, i)
+    i = i+1; local o = {}; i = skipWS(s, i)
+    if s:sub(i,i) == '}' then return o, i+1 end
+    while true do
+        i = skipWS(s, i)
+        local k; k,i = parseStr(s, i)
+        i = skipWS(s, i); i = i+1; i = skipWS(s, i)
+        local v; v,i = parseVal(s, i); o[k] = v; i = skipWS(s, i)
+        if s:sub(i,i) == '}' then return o, i+1 end
+        i = i+1
+    end
+end
+parseVal = function(s, i)
+    i = skipWS(s, i); local c = s:sub(i,i)
+    if     c == '"' then return parseStr(s, i)
+    elseif c == '[' then return parseArr(s, i)
+    elseif c == '{' then return parseObj(s, i)
+    elseif s:sub(i,i+3) == "true"  then return true,  i+4
+    elseif s:sub(i,i+4) == "false" then return false, i+5
+    elseif s:sub(i,i+3) == "null"  then return nil,   i+4
+    else
+        local n = s:match("^-?%d+%.?%d*[eE]?[+-]?%d*", i)
+        if n then return tonumber(n), i+#n end
+    end
+    return nil, i+1
+end
+function JSON.decode(s)
+    if not s or s == "" then return {} end
+    local ok, r = pcall(function() return (parseVal(s, 1)) end)
+    return (ok and type(r) == "table") and r or {}
+end
+
+-- ─── file helpers ─────────────────────────────────────────────────────────────
+local function safeRead(p)
+    local ok, d = pcall(readfile, p); return ok and d or nil
+end
+local function safeWrite(p, d)
+    pcall(writefile, p, d)
+end
+
+-- ─── get / apply a control's value ───────────────────────────────────────────
+local function getVal(ctrl, kind)
+    if     kind == "toggle"    then return ctrl:Get()
+    elseif kind == "slider"    then return ctrl:Get()
+    elseif kind == "range"     then local a,b = ctrl:Get(); return {a, b}
+    elseif kind == "dropdown"  then return ctrl:Get()
+    elseif kind == "multidrop" then return ctrl:Get()
+    elseif kind == "textbox"   then return ctrl:Get()
+    end
+end
+
+local function applyVal(ctrl, kind, value)
+    if value == nil then return end
+    if kind == "toggle" then
+        ctrl:Set(value == true or value == "true")
+    elseif kind == "slider" then
+        ctrl:Set(tonumber(value) or 0)
+    elseif kind == "range" then
+        if type(value) == "table" and value[1] and value[2] then
+            ctrl:Set(tonumber(value[1]) or 0, tonumber(value[2]) or 0)
+        end
+    elseif kind == "dropdown" then
+        ctrl:Set(tostring(value))
+    elseif kind == "multidrop" then
+        if type(value) == "table" then ctrl:Set(value) end
+    elseif kind == "textbox" then
+        ctrl:Set(tostring(value))
+    end
+end
+
+-- ─── debounced auto-save ──────────────────────────────────────────────────────
+local function scheduleSave()
+    if not _autoSave then return end
+    if _saveThread then task.cancel(_saveThread); _saveThread = nil end
+    _saveThread = task.delay(_saveDelay, function()
+        Config.Save(); _saveThread = nil
+    end)
+end
+
+-- ─── internal register ────────────────────────────────────────────────────────
+local function internalRegister(key, ctrl, kind)
+    if _entryIndex[key] then return end
+    local entry = {key = key, ctrl = ctrl, kind = kind}
+    _entries[#_entries+1] = entry
+    _entryIndex[key]      = entry
+
+    -- apply any value already loaded from disk
+    if _data[key] ~= nil then
+        applyVal(ctrl, kind, _data[key])
+    end
+
+    -- wrap ctrl.Set so every change is captured and saved
+    if _autoSave then
+        local origSet = ctrl.Set
+        ctrl.Set = function(self, ...)
+            origSet(self, ...)
+            _data[key] = getVal(ctrl, kind)
+            scheduleSave()
+        end
+    end
+end
+
+-- ─── key builder ──────────────────────────────────────────────────────────────
+local function buildKey(rawLabel, kind)
+    local labelStr
+    if type(rawLabel) == "table" then
+        labelStr = rawLabel.Text or rawLabel.Label or rawLabel.Name or kind
+    elseif type(rawLabel) == "string" and rawLabel ~= "" then
+        labelStr = rawLabel
+    else
+        labelStr = kind
+    end
+    -- sanitise to a safe JSON key
+    local base = labelStr:gsub("[^%w_%-]", "_") .. "_" .. kind
+    if not _entryIndex[base] then return base end
+    local n = 2
+    while _entryIndex[base .. "_" .. n] do n = n+1 end
+    return base .. "_" .. n
+end
+
+-- ─── wrap one Tab method ──────────────────────────────────────────────────────
+local function wrapMethod(Tab, methodName, kind)
+    local original = Tab[methodName]
+    if not original then return end
+    Tab[methodName] = function(self, ...)
+        local args  = {...}
+        local ctrl  = original(self, ...)
+        if ctrl then
+            -- arg[1] is always the label (string or options-table)
+            local key = buildKey(args[1], kind)
+            internalRegister(key, ctrl, kind)
+        end
+        return ctrl
+    end
+end
+
+-- ─── Public API ───────────────────────────────────────────────────────────────
+
+--- Config.Init(scriptName [, autoSave])
+--- Sets the save-file name and optionally disables auto-save.
+--- Call this BEFORE Config.Patch().
+function Config.Init(scriptName, autoSave)
+    _fileName = (scriptName or "NeronScript") .. "_config.json"
+    if autoSave ~= nil then _autoSave = autoSave end
+    -- pre-load existing data so values are ready the moment controls register
+    local raw = safeRead(_fileName)
+    if raw then _data = JSON.decode(raw) or {} end
+end
+
+--- Config.Patch(NeronLib)
+--- Monkey-patches NeronLib ONE TIME so all Add* calls auto-register.
+--- Call after Config.Init() and before NeronLib:CreateWindow().
+function Config.Patch(NeronLib)
+    if _patched then return end
+    _patched = true
+
+    local origCreateWindow = NeronLib.CreateWindow
+    NeronLib.CreateWindow = function(self, ...)
+        local Window = origCreateWindow(self, ...)
+        if not Window then return Window end
+
+        local origAddCategory = Window.AddCategory
+        Window.AddCategory = function(wSelf, ...)
+            local Category = origAddCategory(wSelf, ...)
+            if not Category then return Category end
+
+            local origAddTab = Category.AddTab
+            Category.AddTab = function(cSelf, ...)
+                local Tab = origAddTab(cSelf, ...)
+                if not Tab then return Tab end
+
+                wrapMethod(Tab, "AddToggle",        "toggle")
+                wrapMethod(Tab, "AddSlider",        "slider")
+                wrapMethod(Tab, "AddDropdown",      "dropdown")
+                wrapMethod(Tab, "AddMultiDropdown", "multidrop")
+                wrapMethod(Tab, "AddRangeSlider",   "range")
+                wrapMethod(Tab, "AddTextbox",       "textbox")
+
+                return Tab
+            end
+
+            return Category
+        end
+
+        return Window
+    end
+end
+
+--- Config.Save()
+--- Immediately snapshot all controls to disk.
+function Config.Save()
+    for _, e in ipairs(_entries) do
+        _data[e.key] = getVal(e.ctrl, e.kind)
+    end
+    safeWrite(_fileName, JSON.encode(_data))
+end
+
+--- Config.Load()
+--- Read disk and apply saved values to every registered control.
+--- Call once after ALL controls have been built.
+function Config.Load()
+    local raw = safeRead(_fileName)
+    if not raw then return end
+    _data = JSON.decode(raw) or {}
+    for _, e in ipairs(_entries) do
+        if _data[e.key] ~= nil then
+            applyVal(e.ctrl, e.kind, _data[e.key])
+        end
+    end
+end
+
+--- Config.Reset()
+--- Wipe saved config from disk.
+function Config.Reset()
+    _data = {}
+    safeWrite(_fileName, "{}")
+end
+
+--- Config.Register(key, ctrl, kind)
+--- Manual fallback for controls created outside NeronLib.
+function Config.Register(key, ctrl, kind)
+    internalRegister(key, ctrl, kind)
+end
+
+--- Config.SetSaveDelay(seconds)
+--- How long to wait after the last change before writing to disk.
+function Config.SetSaveDelay(seconds)
+    _saveDelay = seconds or 1.5
+end
+
+return Config
